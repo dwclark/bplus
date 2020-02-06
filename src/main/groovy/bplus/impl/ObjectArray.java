@@ -28,8 +28,8 @@ public class ObjectArray<K extends Comparable<K>,V> {
         }
 
         public K key(final int index) { return keyType.cast(ary[keyIndex(index)]); }
-        public Node<K> left(final int index) { return (Node<K>) ary[leftIndex(index)]; }
-        public Node<K> right(final int index) { return (Node<K>) ary[rightIndex(index)]; }
+        public Node<K> left(final int index) { return extractNode(leftIndex(index)); }
+        public Node<K> right(final int index) { return extractNode(rightIndex(index)); }
 
         public void copy(final int argSrcPos, final Node<K> dest, final int argDestPos, final int argLength) {
             if(dest instanceof ObjectArray._Branch) {
@@ -50,6 +50,11 @@ public class ObjectArray<K extends Comparable<K>,V> {
         private int leftIndex(final int index) { return index << 1; }
         private int keyIndex(final int index) { return leftIndex(index) + 1; }
         private int rightIndex(final int index) { return leftIndex(index) + 2; }
+
+        @SuppressWarnings("unchecked")
+        private Node<K> extractNode(final int actualIndex) {
+            return (Node<K>) ary[actualIndex];
+        }
     }
     
     class _Leaf implements Leaf<K,V> {
