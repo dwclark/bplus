@@ -51,4 +51,18 @@ class ObjectArraySpec extends Specification {
         Node.insertIndex(leaf.search(110)) == 11
     }
 
+    def 'test left shift'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 3)
+        def branch = oa.newBranch()
+        (0..2).each { i -> branch.put(i, null, i, null).sizeUp(1) }
+
+        when:
+        branch.shiftLeft(1, 1)
+        branch.sizeDown(1)
+        
+        then:
+        branch.keys() == [ 1, 2 ];
+    }
+
 }

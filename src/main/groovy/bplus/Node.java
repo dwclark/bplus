@@ -1,5 +1,8 @@
 package bplus;
 
+import java.util.List;
+import java.util.ArrayList;
+
 public interface Node<K extends Comparable<K>> {
     int size();
     Node<K> size(int sz);
@@ -48,6 +51,15 @@ public interface Node<K extends Comparable<K>> {
 
     default Node<K> sizeDown(final int by) {
         return size(size() - by);
+    }
+
+    default List<K> keys() {
+        List<K> ret = new ArrayList<>(size());
+        for(int i = 0; i < size(); i++) {
+            ret.add(key(i));
+        }
+
+        return ret;
     }
 
     static boolean found(final int index) {
