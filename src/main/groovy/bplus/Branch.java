@@ -1,8 +1,8 @@
 package bplus;
 
 public interface Branch<K extends Comparable<K>> extends Node<K> {
-    void put(int index, Node<K> left, K k, Node<K> right);
-    void copy(int srcPos, Node<K> dest, int destPos, int length);
+    Branch<K> put(int index, Node<K> left, K k, Node<K> right);
+    Branch<K> copy(int srcPos, Branch<K> src, int pos, int length);
     Node<K> left(int index);
     Node<K> right(int index);
     
@@ -10,7 +10,15 @@ public interface Branch<K extends Comparable<K>> extends Node<K> {
         return true;
     }
 
-    default void copy(int srcPos, int destPos, int length) {
-        copy(srcPos, this, destPos, length);
+    default void copy(int srcPos, int pos, int length) {
+        copy(srcPos, this, pos, length);
+    }
+
+    default void slowCopy(final int argSrcPos, final Branch<K> src, final int argDestPos, final int argLength) {
+        for(int i = 0; i < argLength; ++i) {
+            final int destIndex = argDestPos + i;
+            final int srcIndex = argSrcPos + i;
+            put(destIndex, src.left(srcIndex), src.key(srcIndex), src.right(srcIndex));
+        }
     }
 }

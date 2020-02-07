@@ -2,9 +2,11 @@ package bplus;
 
 public interface Node<K extends Comparable<K>> {
     int size();
+    Node<K> size(int sz);
     int order();
     K key(int index);
     boolean isBranch();
+    void done();
 
     default boolean isLeaf() {
         return !isBranch();
@@ -38,6 +40,14 @@ public interface Node<K extends Comparable<K>> {
         }
 
         return insertIndex(low);
+    }
+
+    default Node<K> sizeUp(final int by) {
+        return size(size() + by);
+    }
+
+    default Node<K> sizeDown(final int by) {
+        return size(size() - by);
     }
 
     static boolean found(final int index) {
