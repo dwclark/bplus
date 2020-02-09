@@ -51,18 +51,146 @@ class ObjectArraySpec extends Specification {
         Node.insertIndex(leaf.search(110)) == 11
     }
 
-    def 'test left shift'() {
-        setup:
-        def oa = new ObjectArray(Integer, Integer, 3)
+    private allocateBranch(final int size) {
+        def oa = new ObjectArray(Integer, Integer, size)
         def branch = oa.newBranch()
-        (0..2).each { i -> branch.put(i, null, i, null).sizeUp(1) }
-
-        when:
-        branch.shiftLeft(1, 1)
-        branch.sizeDown(1)
-        
-        then:
-        branch.keys() == [ 1, 2 ];
+        (0..<size).each { i -> branch.put(i, null, i, null).sizeUp(1) }
+        return branch
     }
 
+    def 'test left shift'() {
+        when:
+        def branch = allocateBranch(4)
+        branch.shiftLeft(3, 1).sizeDown(1)
+        
+        then:
+        branch.keys() == [ 0, 1, 3 ];
+
+        when:
+        branch = allocateBranch(4)
+        branch.shiftLeft(2, 2).sizeDown(2);
+
+        then:
+        branch.keys() == [2, 3]
+
+        when:
+        branch = allocateBranch(4)
+        branch.shiftLeft(1, 1).sizeDown(1);
+
+        then:
+        branch.keys() == [1,2,3]
+
+    }
+
+    def 'test right shift'() {
+        when:
+        def branch = allocateBranch(4)
+        branch.shiftRight(0, 1);
+        branch.put(0, null, 100, null);
+        
+        then:
+        branch.keys() == [ 100, 0, 1, 2 ];
+
+        when:
+        branch = allocateBranch(4)
+        branch.shiftRight(0, 3);
+        branch.put(0, null, 100, null);
+        branch.put(1, null, 100, null);
+        branch.put(2, null, 100, null);
+
+        then:
+        branch.keys() == [100, 100, 100, 0]
+
+        when:
+        branch = allocateBranch(4)
+        branch.shiftRight(2, 1);
+
+        then:
+        branch.keys() == [0,1,2,2]
+
+        when:
+        branch = allocateBranch(4)
+        branch.shiftRight(0, 1)
+
+        then:
+        branch.keys() == [0,0,1,2]
+    }
+
+    def 'test copy'() {
+        when:
+        def branch = allocateBranch(10)
+        branch.copy(5, 0, 2)
+
+        then:
+        branch.keys() == [5,6,2,3,4,5,6,7,8,9]
+
+        when:
+        branch = allocateBranch(10)
+        branch.copy(8, 7, 2)
+
+        then:
+        branch.keys() == [0,1,2,3,4,5,6,8,9,9]
+
+        when:
+        branch = allocateBranch(10)
+        branch.copy(3, 7, 2)
+
+        then:
+        branch.keys() == [0,1,2,3,4,5,6,3,4,9]
+    }
+
+    def 'test leaf copy'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 128)
+        def leaf = oa.newLeaf()
+
+        when:
+        (0..<10).each { num ->
+            leaf.put(num, num * 10, num * 20).sizeUp(1)
+        }
+
+        leaf.copy(5, 0, 5);
+        leaf.sizeDown(5);
+
+        then:
+        leaf.toMap() == [50:100, 60:120, 70:140, 80:160, 90:180]
+        leaf.values() == [100,120,140,160,180]
+    }
+
+    def 'test leaf split'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 10)
+        def leaf = oa.newLeaf()
+        (0..<10).each { num ->
+            leaf.put(num, num * 10, num * 20).sizeUp(1)
+        }
+
+        def leftLeaf = oa.newLeaf();
+
+        when:
+        leftLeaf.copy(0, leaf, 0, 5).sizeUp(5);
+        leaf.copy(5, 0, 5).sizeDown(5);
+
+        then:
+        leftLeaf.size() == 5
+        leaf.size() == 5
+        leftLeaf.toMap() == [0:0, 10:20, 20:40, 30:60, 40:80]
+        leaf.toMap() == [50:100, 60:120, 70:140, 80:160, 90:180]
+
+    }
+
+    def 'test leaf insert'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 10);
+        def leaf = oa.newLeaf();
+        def list = [6, 2, 4, 9, 7, 1, 3, 5, 8, 10]
+
+        when:
+        list.each { num -> leaf.insert(num, num * 10) }
+
+        then:
+        leaf.full
+        leaf.keys() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        leaf.values() == [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    }
 }
