@@ -41,6 +41,18 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
         return this;
     }
     
+    default V delete(final K k) {
+        final int index = search(k);
+        if(index < 0) {
+            return null;
+        }
+
+        final V v = value(index);
+        shiftLeft(index, 1).sizeDown(0);
+        return v;
+    }
+
+    
     default boolean isBranch() {
         return false;
     }
@@ -48,14 +60,6 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
     default Leaf<K,V> copy(final int srcPos, final int destPos, final int length) {
         copy(srcPos, this, destPos, length);
         return this;
-    }
-
-    default void slowCopy(final int argSrcPos, final Leaf<K,V> src, final int argDestPos, final int argLength) {
-        for(int i = 0; i < argLength; ++i) {
-            final int destIndex = argDestPos + i;
-            final int srcIndex = argSrcPos + i;
-            put(destIndex, src.key(srcIndex), src.value(srcIndex));
-        }
     }
 
     default Map<K,V> toMap() {

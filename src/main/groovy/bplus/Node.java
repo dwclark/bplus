@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public interface Node<K extends Comparable<K>,V> {
     int size();
-    Node<K,V> size(int sz);
+    void size(int sz);
     int order();
     K key(int index);
     boolean isBranch();
@@ -14,6 +14,8 @@ public interface Node<K extends Comparable<K>,V> {
     Branch<K,V> asBranch();
     Leaf<K,V> asLeaf();
     Node<K,V> copy(int srcPos, Node<K,V> src, int pos, int length);
+    Branch<K,V> newBranch();
+    Leaf<K,V> newLeaf();
     
     default boolean isLeaf() {
         return !isBranch();
@@ -50,11 +52,13 @@ public interface Node<K extends Comparable<K>,V> {
     }
 
     default Node<K,V> sizeUp(final int by) {
-        return size(size() + by);
+        size(size() + by);
+        return this;
     }
 
     default Node<K,V> sizeDown(final int by) {
-        return size(size() - by);
+        size(size() - by);
+        return this;
     }
 
     default List<K> keys() {
@@ -72,6 +76,19 @@ public interface Node<K extends Comparable<K>,V> {
     
     default Node<K,V> shiftRight(int at, int by) {
         return copy(at, at + by, size() - (at + by));
+    }
+
+    //to minimize copies, this node becomes the left node
+    //the right node is returned.
+    default Node<K,V> split() {
+        final Node<K,V> right = isBranch() ? newBranch() : newLeaf();
+        final Node<K,V> left = this;
+        
+        final int leftSize = left.size() >>> 1;
+        final int rightSize = left.size() - leftSize;
+        right.copy(leftSize, left, 0, rightSize).size(rightSize);
+        left.size(leftSize);
+        return right;
     }
 
     static boolean found(final int index) {

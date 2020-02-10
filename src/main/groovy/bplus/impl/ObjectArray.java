@@ -1,9 +1,8 @@
 package bplus.impl;
 
 import bplus.*;
-import java.util.function.Consumer;
 
-public class ObjectArray<K extends Comparable<K>,V> implements NodeFactory<K,V> {
+public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
 
     private final Class<K> keyType;
     private final Class<V> valueType;
@@ -18,14 +17,6 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeFactory<K,V> 
         this.root = new _Leaf();
     }
 
-    public Branch<K,V> newBranch() {
-        return new _Branch();
-    }
-
-    public Leaf<K,V> newLeaf() {
-        return new _Leaf();
-    }
-
     public Node<K,V> getRoot() {
         return root;
     }
@@ -34,38 +25,58 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeFactory<K,V> 
         root = val;
     }
 
-    private class _Branch implements Branch<K,V> {
-        final Object[] ary = new Object[1 + 2 * order];
+    private class Base {
         private int _size = 0;
+        protected final Object[] ary;
+
+        protected Base(final int arySize) {
+            this.ary = new Object[arySize];
+        }
         
         public int size() { return _size; }
-        public Node<K,V> size(final int sz) { _size = sz; return this; }
+        public void size(final int sz) { _size = sz; }
+
+        public Branch<K,V> newBranch() {
+            return new _Branch();
+        }
+
+        public Leaf<K,V> newLeaf() {
+            return new _Leaf();
+        }
+
         public int order() { return order; }
+        public void done() {}
+
+        protected int check(final int index) {
+            if(index >= size()) {
+                throw new IndexOutOfBoundsException();
+            }
+            
+            return index;
+        }
+    }
+
+    private class _Branch extends Base implements Branch<K,V> {
+        protected _Branch() { super(1 + 2 * order); }
 
         public Branch<K,V> put(final int index, final Node<K,V> left, final K k, final Node<K,V> right) {
+            check(index);
             ary[leftIndex(index)] = left;
             ary[keyIndex(index)] = k;
             ary[rightIndex(index)] = right;
             return this;
         }
 
-        public void done() {}
-        public K key(final int index) { return keyType.cast(ary[keyIndex(index)]); }
-        public Node<K,V> left(final int index) { return extractNode(leftIndex(index)); }
-        public Node<K,V> right(final int index) { return extractNode(rightIndex(index)); }
+        public K key(final int index) { return keyType.cast(ary[keyIndex(check(index))]); }
+        public Node<K,V> left(final int index) { return extractNode(leftIndex(check(index))); }
+        public Node<K,V> right(final int index) { return extractNode(rightIndex(check(index))); }
 
         public Branch<K,V> copy(final int argSrcPos, final Node<K,V> argSrc, final int argDestPos, final int argLength) {
-            final ObjectArray._Branch src = extractSameType(argSrc.asBranch());
-            if(src != null) {
-                final int srcIndex = leftIndex(argSrcPos);
-                final int destIndex = leftIndex(argDestPos);
-                final int length = copyLength(argSrcPos, src, argDestPos, argLength);
-                System.arraycopy(src.ary, srcIndex, ary, destIndex, length);
-            }
-            else {
-                slowCopy(argSrcPos, argSrc.asBranch(), argDestPos, argLength);
-            }
-
+            final ObjectArray._Branch src = extract(argSrc.asBranch());
+            final int srcIndex = leftIndex(argSrcPos);
+            final int destIndex = leftIndex(argDestPos);
+            final int length = copyLength(argSrcPos, src, argDestPos, argLength);
+            System.arraycopy(src.ary, srcIndex, ary, destIndex, length);
             return this;
         }
         
@@ -73,8 +84,13 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeFactory<K,V> 
         private int keyIndex(final int index) { return leftIndex(index) + 1; }
         private int rightIndex(final int index) { return leftIndex(index) + 2; }
 
-        private ObjectArray._Branch extractSameType(final Branch<K,V> branch) {
-            return (branch instanceof ObjectArray._Branch) ? (ObjectArray._Branch) branch : null;
+        private ObjectArray._Branch extract(final Branch<K,V> branch) {
+            if(branch instanceof ObjectArray._Branch) {
+                return (ObjectArray._Branch) branch;
+            }
+            else {
+                throw new IllegalArgumentException("source node is not the correct type");
+            }
         }
 
         private int copyLength(final int srcPos, final ObjectArray._Branch src, final int destPos, final int length) {
@@ -96,43 +112,37 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeFactory<K,V> 
         }
     }
     
-    private class _Leaf implements Leaf<K,V> {
-        final Object[] ary = new Object[2 * order];
-        private int _size = 0;
-
-        public int size() { return _size; }
-        public Node<K,V> size(final int sz) { _size = sz; return this; }
-        public int order() { return order; }
-        public void done() {}
+    private class _Leaf extends Base implements Leaf<K,V> {
+        protected _Leaf() { super(2 * order); }
 
         public Leaf<K,V> put(final int index, final K k, final V v) {
+            check(index);
             ary[keyIndex(index)] = k;
             ary[valueIndex(index)] = v;
             return this;
         }
 
         public Leaf<K,V> copy(final int argSrcPos, final Node<K,V> argSrc, final int argDestPos, final int argLength) {
-            final ObjectArray._Leaf src = extractSameType(argSrc.asLeaf());
-            if(src != null) {
-                final int srcIndex = keyIndex(argSrcPos);
-                final int destIndex = keyIndex(argDestPos);
-                final int length = argLength << 1;
-                System.arraycopy(src.ary, srcIndex, ary, destIndex, length);
-            }
-            else {
-                slowCopy(argSrcPos, argSrc.asLeaf(), argDestPos, argLength);
-            }
-
+            final ObjectArray._Leaf src = extract(argSrc.asLeaf());
+            final int srcIndex = keyIndex(argSrcPos);
+            final int destIndex = keyIndex(argDestPos);
+            final int length = argLength << 1;
+            System.arraycopy(src.ary, srcIndex, ary, destIndex, length);
             return this;
         }
         
-        public K key(final int index) { return keyType.cast(ary[keyIndex(index)]); }
-        public V value(final int index) { return valueType.cast(ary[valueIndex(index)]); }
+        public K key(final int index) { return keyType.cast(ary[keyIndex(check(index))]); }
+        public V value(final int index) { return valueType.cast(ary[valueIndex(check(index))]); }
         private int keyIndex(final int index) { return index << 1; }
         private int valueIndex(final int index) { return keyIndex(index) + 1; }
 
-        private ObjectArray._Leaf extractSameType(final Leaf<K,V> arg) {
-            return (arg instanceof ObjectArray._Leaf) ? (ObjectArray._Leaf) arg : null;
+        private ObjectArray._Leaf extract(final Leaf<K,V> arg) {
+            if(arg instanceof ObjectArray._Leaf) {
+                return (ObjectArray._Leaf) arg;
+            }
+            else {
+                throw new IllegalArgumentException("source node is not the correct type");
+            }
         }
     }
 }

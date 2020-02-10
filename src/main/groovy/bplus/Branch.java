@@ -21,12 +21,4 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
         copy(srcPos, this, destPos, length);
         return this;
     }
-
-    default void slowCopy(final int argSrcPos, final Branch<K,V> src, final int argDestPos, final int argLength) {
-        for(int i = 0; i < argLength; ++i) {
-            final int destIndex = argDestPos + i;
-            final int srcIndex = argSrcPos + i;
-            put(destIndex, src.left(srcIndex), src.key(srcIndex), src.right(srcIndex));
-        }
-    }
 }

@@ -8,7 +8,7 @@ class ObjectArraySpec extends Specification {
     def "test creation, fill, and search for branch"() {
         setup:
         def oa = new ObjectArray(Integer, Integer, 128)
-        def branch = oa.newBranch()
+        def branch = oa.root.newBranch()
 
         when:
         def res = branch.search(10)
@@ -18,7 +18,7 @@ class ObjectArraySpec extends Specification {
 
         when:
         (0..10).each { num ->
-            branch.put(num, null, num * 10, null).sizeUp(1)
+            branch.sizeUp(1).put(num, null, num * 10, null)
         }
 
         then:
@@ -31,7 +31,7 @@ class ObjectArraySpec extends Specification {
     def "test creation, fill, and search for leaf"() {
         setup:
         def oa = new ObjectArray(Integer, Integer, 128)
-        def leaf = oa.newLeaf()
+        def leaf = oa.root.newLeaf()
 
         when:
         def res = leaf.search(10)
@@ -41,7 +41,7 @@ class ObjectArraySpec extends Specification {
 
         when:
         (0..10).each { num ->
-            leaf.put(num, num * 10, num * 20).sizeUp(1)
+            leaf.sizeUp(1).put(num, num * 10, num * 20)
         }
 
         then:
@@ -53,8 +53,8 @@ class ObjectArraySpec extends Specification {
 
     private allocateBranch(final int size) {
         def oa = new ObjectArray(Integer, Integer, size)
-        def branch = oa.newBranch()
-        (0..<size).each { i -> branch.put(i, null, i, null).sizeUp(1) }
+        def branch = oa.root.newBranch()
+        (0..<size).each { i -> branch.sizeUp(1).put(i, null, i, null) }
         return branch
     }
 
@@ -142,11 +142,11 @@ class ObjectArraySpec extends Specification {
     def 'test leaf copy'() {
         setup:
         def oa = new ObjectArray(Integer, Integer, 128)
-        def leaf = oa.newLeaf()
+        def leaf = oa.root.newLeaf()
 
         when:
         (0..<10).each { num ->
-            leaf.put(num, num * 10, num * 20).sizeUp(1)
+            leaf.sizeUp(1).put(num, num * 10, num * 20)
         }
 
         leaf.copy(5, 0, 5);
@@ -160,12 +160,12 @@ class ObjectArraySpec extends Specification {
     def 'test leaf split'() {
         setup:
         def oa = new ObjectArray(Integer, Integer, 10)
-        def leaf = oa.newLeaf()
+        def leaf = oa.root.newLeaf()
         (0..<10).each { num ->
-            leaf.put(num, num * 10, num * 20).sizeUp(1)
+            leaf.sizeUp(1).put(num, num * 10, num * 20)
         }
 
-        def leftLeaf = oa.newLeaf();
+        def leftLeaf = oa.root.newLeaf();
 
         when:
         leftLeaf.copy(0, leaf, 0, 5).sizeUp(5);
@@ -182,7 +182,7 @@ class ObjectArraySpec extends Specification {
     def 'test leaf insert'() {
         setup:
         def oa = new ObjectArray(Integer, Integer, 10);
-        def leaf = oa.newLeaf();
+        def leaf = oa.root.newLeaf();
         def list = [6, 2, 4, 9, 7, 1, 3, 5, 8, 10]
 
         when:

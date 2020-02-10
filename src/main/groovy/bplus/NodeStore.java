@@ -2,9 +2,7 @@ package bplus;
 
 import java.util.function.Consumer;
 
-public interface NodeFactory<K extends Comparable<K>,V> {
-    Branch<K,V> newBranch();
-    Leaf<K,V> newLeaf();
+public interface NodeStore<K extends Comparable<K>,V> {
     Node<K,V> getRoot();
     void setRoot(Node<K,V> val);
 }
