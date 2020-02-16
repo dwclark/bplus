@@ -2,8 +2,6 @@ package bplus;
 
 public class BplusTree<K extends Comparable<K>,V>  {
 
-    private enum Direction { Left, Right }
-    
     private class InsertResult {
         final Node<K,V> left;
         final Node<K,V> right;
@@ -21,23 +19,146 @@ public class BplusTree<K extends Comparable<K>,V>  {
     private final InsertResult NO_SPLIT = new InsertResult(null, null);
 
     private final NodeStore<K,V> store;
+    private final ThreadLocal<Traversal<K,V>> tlTraversal = ThreadLocal.withInitial(Traversal::new);
     
     public BplusTree(final NodeStore<K,V> store) {
         this.store = store;
     }
 
     public void put(final K k, final V v) {
-        final InsertResult result = insert(store.getRoot(), k, v);
-        if(result.isSplit()) {
-            final Branch<K,V> newRoot = result.left.newBranch();
+        final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
+        while(traversal.level() >= 0) {
+            final Node<K,V> current = traversal.getCurrent().getNode();
+
+            //handle leaf
+            if(current.isLeaf()) {
+                putLeaf(traversal, k, v);
+                traversal.pop();
+            }
+            else if(traversal.hasOrphan()) {
+                putBranch(traversal);
+                traversal.pop();
+            }
+            else {
+                return;
+            }
+        }
+
+        //if there is a remaining orphan, we need a new root
+        if(traversal.hasOrphan()) {
+            final Branch<K,V> newRoot = store.getRoot().newBranch();
             newRoot.sizeUp(1);
-            newRoot.put(0, result.left, result.right.key(0), result.right);
+            newRoot.put(0, store.getRoot(), traversal.getOrphan().getMinKey(), traversal.getOrphan());
             store.setRoot(newRoot);
         }
     }
 
+    private void putLeaf(final Traversal<K,V> traversal, final K k, final V v) {
+        final Node<K,V> current = traversal.getCurrent().getNode();
+        final Leaf<K,V> leaf = current.asLeaf();
+        
+        if(!leaf.isFull()) {
+            leaf.insert(k, v);
+            return;
+        }
+        
+        final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSiblingWithRoom();
+        if(leftRel != null) {
+            final Leaf<K,V> sibling = leftRel.getSibling().asLeaf();
+            sibling.sizeUp(1);
+            sibling.put(sibling.size() - 1, leaf.getMinKey(), leaf.getMinValue());
+            leaf.removeMin();
+            leaf.insert(k, v);
+            leftRel.getCommonParent().put(leftRel.getParentIndex(), leaf.getMinKey());
+            return;
+        }
+        
+        final Traversal.SiblingRelation<K,V> rightRel = traversal.getRightSiblingWithRoom();
+        if(rightRel != null) {
+            final Leaf<K,V> sibling = rightRel.getSibling().asLeaf();
+            sibling.sizeUp(1).shiftRight(0, 1);
+            
+            final int searchIndex = leaf.search(k);
+            final int insertIndex = searchIndex >= 0 ? searchIndex : Node.insertIndex(searchIndex);
+            if(insertIndex == leaf.size()) {
+                sibling.put(0, k, v);
+            }
+            else {
+                sibling.put(0, leaf.getMaxKey(), leaf.getMaxValue());
+                leaf.removeMax();
+                leaf.insert(k, v);
+            }
+
+            rightRel.getCommonParent().put(rightRel.getParentIndex(), sibling.getMinKey());
+            return;
+        }
+        
+        final Leaf<K,V> newRightSibling = leaf.split(k, v);
+        final Traversal.Entry<K,V> parentEntry = traversal.parent();
+        if(parentEntry != null) {
+            parentEntry.getNode().asBranch().put(parentEntry.getIndex(), leaf.getMinKey());
+        }
+        
+        traversal.setOrphan(newRightSibling);
+    }
+
+    private void putBranch(final Traversal<K,V> traversal) {
+        final Traversal.Entry<K,V> currentEntry = traversal.getCurrent();
+        final Branch<K,V> current = currentEntry.getNode().asBranch();
+        final Node<K,V> orphan = traversal.getOrphan();
+        traversal.setOrphan(null);
+
+        if(!current.isFull()) {
+            final int newIndex = currentEntry.getIndex() + 1;
+            current.sizeUp(1);
+            current.shiftRight(newIndex, 1);
+            current.put(newIndex, orphan.getMinKey(), orphan);
+            return;
+        }
+
+        final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSiblingWithRoom();
+        if(leftRel != null) {
+            //move min to left sibling
+            final Branch<K,V> sibling = leftRel.getSibling().asBranch();
+            final Node<K,V> toMove = current.left(0);
+            sibling.sizeUp(1);
+            sibling.put(sibling.size() - 1, toMove.getMinKey(), toMove);
+
+            //insert into current
+            current.shiftLeft(1, 1).sizeDown(1);
+            current.insert(orphan);
+
+            //reset parent key
+            leftRel.getCommonParent().put(leftRel.getParentIndex(), current.getMinLeafKey());
+            return;
+        }
+        
+        final Traversal.SiblingRelation<K,V> rightRel = traversal.getRightSiblingWithRoom();
+        if(rightRel != null) {
+            //move max to right sibling
+            final Branch<K,V> sibling = rightRel.getSibling().asBranch();
+            final Node<K,V> toMove = current.right(current.size() - 1);
+            sibling.sizeUp(1);
+            sibling.shiftRight(0, 1);
+            sibling.put(0, toMove, sibling.right(0).getMinKey());
+
+            //reset parent key
+            rightRel.getCommonParent().put(rightRel.getParentIndex(), sibling.getMinLeafKey());
+
+            //insert into current
+            current.sizeDown(1);
+            current.insert(orphan);
+        }
+
+        final Node<K,V> newRight = current.split(orphan);
+        traversal.setOrphan(newRight);
+    }
+    
     public V get(final K k) {
-        return search(store.getRoot(), k);
+        final Traversal<K,V> tr = tlTraversal.get().execute(store.getRoot(), k);
+        final Leaf<K,V> leaf = tr.getCurrent().getNode().asLeaf();
+        final int index = leaf.search(k);
+        return index >= 0 ? leaf.value(index) : null;
     }
 
     public V remove(final K k) {
@@ -69,111 +190,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
         return ret;
     }
 
-    private InsertResult insert(final Node<K,V> node, final K k, final V v) {
-        if(node.isLeaf()) {
-            return insertLeaf(node.asLeaf(), k, v);
-        }
-        else {
-            return insertBranch(node.asBranch(), k, v);
-        }
-    }
-
-    private InsertResult insertBranch(final Branch<K,V> branch, final K k, final V v) {
-        int insertPoint;
-        Node<K,V> child;
-        
-        final int searchPoint = branch.search(k);
-        
-        if(searchPoint >= 0) {
-            child = branch.right(searchPoint);
-            insertPoint = searchPoint + 1;
-        }
-        else {
-            insertPoint = Node.insertIndex(searchPoint);
-            child = (insertPoint == branch.size()) ? branch.right(insertPoint-1) : branch.left(insertPoint);
-        }
-        
-        final InsertResult result = insert(child, k, v);
-        if(result.isSplit()) {
-            branch.sizeUp(1);
-            if(insertPoint + 1 < branch.size()) {
-                branch.shiftRight(insertPoint, 1);
-            }
-            
-            branch.put(insertPoint, result.left, result.right.key(0), result.right);
-        }
-        
-        return branch.isFull() ? new InsertResult(branch, branch.split()) : NO_SPLIT;
-    }
-
-    private InsertResult insertLeaf(final Leaf<K,V> leaf, final K k, final V v) {
-        leaf.insert(k, v);
-        return leaf.isFull() ? new InsertResult(leaf, leaf.split()) : NO_SPLIT;
-    }
-
-    private V search(final Node<K,V> node, final K k) {
-        if(node.isLeaf()) {
-            final Leaf<K,V> leaf = node.asLeaf();
-            final int index = leaf.search(k);
-            return index >= 0 ? leaf.value(index) : null;
-        }
-        else {
-            final Branch<K,V> branch = node.asBranch();
-            final int searchIndex = branch.search(k);
-            final Direction dir = direction(searchIndex, branch);
-            final int navIndex = navigateIndex(searchIndex, branch);
-            final Node<K,V> navNode = (dir == Direction.Left) ? branch.left(navIndex) : branch.right(navIndex);
-            return search(navNode, k);
-        }
-    }
-
     private V delete(final Node<K,V> node, final K k) {
-        if(node.isLeaf()) {
-            return node.asLeaf().delete(k);
-        }
-        else {
-            final Branch<K,V> branch = node.asBranch();
-            final int searchIndex = branch.search(k);
-            final Direction dir = direction(searchIndex, branch);
-            final int navIndex = navigateIndex(searchIndex, branch);
-            final Node<K,V> navNode = (dir == Direction.Left) ? branch.left(navIndex) : branch.right(navIndex);
-            final V v = delete(navNode, k);
-
-            if(v == null || navNode.size() > 0) {
-                return v;
-            }
-            
-            //navNode has nothing, need to splice together keys.
-        }
-
         throw new UnsupportedOperationException();
-    }
-
-    private Direction direction(final int index, final Branch<K,V> branch) {
-        if(index >= 0) {
-            return Direction.Right;
-        }
-        
-        final int retIndex = Node.insertIndex(index);
-        if(retIndex < branch.size()) {
-            return Direction.Left;
-        }
-        else {
-            return Direction.Right;
-        }
-    }
-
-    private int navigateIndex(final int index, final Branch<K,V> branch) {
-        if(index >= 0) {
-            return index;
-        }
-        
-        int retIndex = Node.insertIndex(index);
-        if(retIndex < branch.size()) {
-            return retIndex;
-        }
-        else {
-            return retIndex - 1;
-        }
     }
 }

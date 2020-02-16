@@ -61,10 +61,20 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
 
         public Branch<K,V> put(final int index, final Node<K,V> left, final K k, final Node<K,V> right) {
             check(index);
-            ary[leftIndex(index)] = left;
+            if(left != null) {
+                ary[leftIndex(index)] = left;
+            }
+            
             ary[keyIndex(index)] = k;
-            ary[rightIndex(index)] = right;
+
+            if(right != null) {
+                ary[rightIndex(index)] = right;
+            }
             return this;
+        }
+
+        public Node<K,V> nullNode() {
+            return null;
         }
 
         public K key(final int index) { return keyType.cast(ary[keyIndex(check(index))]); }

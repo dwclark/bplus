@@ -10,6 +10,22 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
     V value(int index);
     Leaf<K,V> put(int index, K k, V v);
 
+    default void removeMin() {
+        shiftLeft(1, 1).sizeDown(1);
+    }
+
+    default void removeMax() {
+        sizeDown(1);
+    }
+    
+    default V getMinValue(){
+        return value(0);
+    }
+
+    default V getMaxValue() {
+        return value(size() - 1);
+    }
+    
     default Branch<K,V> asBranch() {
         throw new ClassCastException("not a branch");
     }
@@ -18,7 +34,7 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
         return this;
     }
 
-    default Leaf<K,V> insert(K k, V v) {
+    default int insert(K k, V v) {
         final int searchPoint = search(k);
         if(searchPoint >= 0) {
             throw new RuntimeException("duplicate key violation");
@@ -27,7 +43,7 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
         if(isFull()) {
             throw new RuntimeException("leaf is full");
         }
-
+        
         final int index = insertIndex(searchPoint);
         sizeUp(1);
         if(index + 1 == size()) {
@@ -38,7 +54,34 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
             put(index, k, v);
         }
 
-        return this;
+        return index;
+    }
+
+    default Leaf<K,V> split(final K k, final V v) {
+        final int searchPoint = search(k);
+        if(searchPoint >= 0) {
+            throw new RuntimeException("duplicate key violation");
+        }
+
+        if(!isFull()) {
+            throw new RuntimeException("leaf is not full");
+        }
+        
+        final int leftSize = size() >>> 1;
+        final int index = insertIndex(searchPoint);
+        final Leaf<K,V> newRight = newLeaf();
+        final int rightSize = size() - leftSize;
+        newRight.copy(leftSize, this, 0, rightSize).size(rightSize);
+        size(leftSize);
+
+        if(index <= leftSize) {
+            insert(k, v);
+        }
+        else {
+            newRight.insert(k, v);
+        }
+
+        return newRight;
     }
     
     default V delete(final K k) {
@@ -48,7 +91,7 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
         }
 
         final V v = value(index);
-        shiftLeft(index, 1).sizeDown(0);
+        shiftLeft(index, 1).sizeDown(1);
         return v;
     }
 

@@ -17,16 +17,20 @@ public interface Node<K extends Comparable<K>,V> {
     Branch<K,V> newBranch();
     Leaf<K,V> newLeaf();
 
-    default K getMin() {
+    default K getMinKey() {
         return key(0);
     }
 
-    default K getMax() {
+    default K getMaxKey() {
         return key(size() - 1);
     }
     
     default boolean isLeaf() {
         return !isBranch();
+    }
+
+    default boolean isEvenSized() {
+        return (size() & 1) == 0;
     }
 
     default boolean isFull() {
@@ -84,19 +88,6 @@ public interface Node<K extends Comparable<K>,V> {
     
     default Node<K,V> shiftRight(int at, int by) {
         return copy(at, at + by, size() - (at + by));
-    }
-
-    //to minimize copies, this node becomes the left node
-    //the right node is returned.
-    default Node<K,V> split() {
-        final Node<K,V> right = isBranch() ? newBranch() : newLeaf();
-        final Node<K,V> left = this;
-        
-        final int leftSize = left.size() >>> 1;
-        final int rightSize = left.size() - leftSize;
-        right.copy(leftSize, left, 0, rightSize).size(rightSize);
-        left.size(leftSize);
-        return right;
     }
 
     static boolean found(final int index) {
