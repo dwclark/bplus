@@ -5,8 +5,6 @@ import java.util.ArrayList;
 
 class Traversal<K extends Comparable<K>,V> {
 
-    public enum Direction { LEFT, RIGHT, NONE }
-    
     public static class SiblingRelation<T extends Comparable<T>,U> {
         private final Branch<T,U> commonParent;
         private final int parentIndex;

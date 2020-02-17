@@ -1,28 +1,55 @@
 package bplus;
 
+import java.util.List;
+import java.util.ArrayList;
+
 public class BplusTree<K extends Comparable<K>,V>  {
-
-    private class InsertResult {
-        final Node<K,V> left;
-        final Node<K,V> right;
-
-        InsertResult(final Node<K,V> left, final Node<K,V> right) {
-            this.left = left;
-            this.right = right;
-        }
-
-        boolean isSplit() {
-            return left != null;
-        }
-    }
-
-    private final InsertResult NO_SPLIT = new InsertResult(null, null);
 
     private final NodeStore<K,V> store;
     private final ThreadLocal<Traversal<K,V>> tlTraversal = ThreadLocal.withInitial(Traversal::new);
     
     public BplusTree(final NodeStore<K,V> store) {
         this.store = store;
+    }
+
+    public List<K> keyList() {
+        final List<K> ret = new ArrayList<>();
+        Node<K,V> node = store.getRoot();
+        if(node.isBranch()) {
+            keyListBranch(ret, node.asBranch());
+        }
+        else {
+            keyListLeaf(ret, node.asLeaf());
+        }
+
+        return ret;
+    }
+
+    private void keyListBranch(final List<K> list, final Branch<K,V> branch) {
+        Node<K,V> child;
+        for(int i = 0; i < branch.size(); ++i) {
+            child = branch.left(i);
+            if(child.isBranch()) {
+                keyListBranch(list, child.asBranch());
+            }
+            else {
+                keyListLeaf(list, child.asLeaf());
+            }
+        }
+
+        child = branch.right(branch.size() - 1);
+        if(child.isBranch()) {
+            keyListBranch(list, child.asBranch());
+        }
+        else {
+            keyListLeaf(list, child.asLeaf());
+        }
+    }
+
+    private void keyListLeaf(final List<K> list, final Leaf<K,V> leaf) {
+        for(int i = 0; i < leaf.size(); ++i) {
+            list.add(leaf.key(i));
+        }
     }
 
     public void put(final K k, final V v) {
@@ -92,11 +119,14 @@ public class BplusTree<K extends Comparable<K>,V>  {
             rightRel.getCommonParent().put(rightRel.getParentIndex(), sibling.getMinKey());
             return;
         }
-        
+
+        //this is not correct, branch version probably isn't either
+        //it definitely fails in the case of insert at zero branch index
         final Leaf<K,V> newRightSibling = leaf.split(k, v);
         final Traversal.Entry<K,V> parentEntry = traversal.parent();
         if(parentEntry != null) {
-            parentEntry.getNode().asBranch().put(parentEntry.getIndex(), leaf.getMinKey());
+            final Branch<K,V> parentBranch = parentEntry.getNode().asBranch();
+            parentBranch.put(parentEntry.getIndex(), parentBranch.right(parentEntry.getIndex()).getMinKey());
         }
         
         traversal.setOrphan(newRightSibling);
