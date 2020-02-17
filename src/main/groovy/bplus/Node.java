@@ -16,14 +16,7 @@ public interface Node<K extends Comparable<K>,V> {
     Node<K,V> copy(int srcPos, Node<K,V> src, int pos, int length);
     Branch<K,V> newBranch();
     Leaf<K,V> newLeaf();
-
-    default K getMinKey() {
-        return key(0);
-    }
-
-    default K getMaxKey() {
-        return key(size() - 1);
-    }
+    K getMinKey();
     
     default boolean isLeaf() {
         return !isBranch();

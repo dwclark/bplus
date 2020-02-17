@@ -81,6 +81,14 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
         public Node<K,V> left(final int index) { return extractNode(leftIndex(check(index))); }
         public Node<K,V> right(final int index) { return extractNode(rightIndex(check(index))); }
 
+        public Node<K,V> child(final int index) {
+            if(index > size()) {
+                throw new IndexOutOfBoundsException();
+            }
+            
+            return extractNode(leftIndex(index));
+        }
+        
         public Branch<K,V> copy(final int argSrcPos, final Node<K,V> argSrc, final int argDestPos, final int argLength) {
             final ObjectArray._Branch src = extract(argSrc.asBranch());
             final int srcIndex = leftIndex(argSrcPos);

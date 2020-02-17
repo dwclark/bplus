@@ -5,7 +5,12 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
     Branch<K,V> put(int index, Node<K,V> left, K k, Node<K,V> right);
     Node<K,V> left(int index);
     Node<K,V> right(int index);
-
+    Node<K,V> child(int index);
+    
+    default int nodeSize() {
+        return size() + 1;
+    }
+    
     default Branch<K,V> asBranch() {
         return this;
     }
@@ -35,8 +40,12 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
         return put(index, nullNode(), k, right);
     }
 
-    default void insert(final Node<K,V> node) {
-        final int searchPoint = search(node.getMinKey());
+    /**
+     * Note, this returns the node index, not the key index
+     */
+    default int insert(final Node<K,V> node) {
+        final K nodeMinKey = node.getMinKey();
+        final int searchPoint = search(nodeMinKey);
         if(searchPoint >= 0) {
             throw new RuntimeException("duplicate key violation");
         }
@@ -51,28 +60,34 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
 
         if(index == currentSize) {
             //is last node, set far right and node min key is new key
-            put(index, node.getMinKey(), node);
+            put(index, nodeMinKey, node);
+            return index;
         }
         else if(index == 0) {
             //node could be either on the left of 0 or the right of 0
             //that's why we have to test and possibly move the current left
             shiftRight(index, 1);
-            if(left(0).getMinKey().compareTo(node.getMinKey()) < 0) {
-                put(0, node.getMinKey(), node);
+            final K leftMinKey = left(0).getMinKey();
+            if(leftMinKey.compareTo(nodeMinKey) < 0) {
+                put(0, nodeMinKey, node);
+                return 1;
             }
             else {
-                put(0, node, left(0).getMinKey(), left(0));
+                put(0, node, leftMinKey, left(0));
+                return 0;
             }
         }
         else {
             //is a middle insert, after shifting,node becomes right key
             shiftRight(index, 1);
-            put(index, node.getMinKey(), node);
+            put(index, nodeMinKey, node);
+            return index + 1;
         }
     }
 
     default Branch<K,V> split(final Node<K,V> node) {
-        final int searchPoint = search(node.getMinKey());
+        final K nodeMinKey = node.getMinKey();
+        final int searchPoint = search(nodeMinKey);
         if(searchPoint >= 0) {
             throw new RuntimeException("duplicate key violation");
         }
@@ -89,7 +104,7 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
         
         if(isEvenSized()) {
             final Node<K,V> mid = left(half);
-            if(node.getMinKey().compareTo(mid.getMaxKey()) < 0) {
+            if(nodeMinKey.compareTo(mid.key(mid.size() - 1)) < 0) {
                 splitIndex = half;
                 rightSize = half;
                 leftSize = half - 1;
@@ -106,7 +121,7 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
             leftSize = half;
             rightSize = half;
             splitIndex = half + 1;
-            target = node.getMinKey().compareTo(left(splitIndex).getMinKey()) < 0 ? this : right;
+            target = nodeMinKey.compareTo(left(splitIndex).getMinKey()) < 0 ? this : right;
         }
 
         right.size(rightSize);
@@ -116,7 +131,7 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
         return right;
     }
 
-    default K getMinLeafKey() {
+    default K getMinKey() {
         Node<K,V> left = left(0);
         while(left.isBranch()) {
             left = left.asBranch().left(0);

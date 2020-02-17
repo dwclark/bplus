@@ -17,8 +17,16 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
     default void removeMax() {
         sizeDown(1);
     }
+
+    default K getMinKey() {
+        return key(0);
+    }
+
+    default K getMaxKey() {
+        return key(size() - 1);
+    }
     
-    default V getMinValue(){
+    default V getMinValue() {
         return value(0);
     }
 

@@ -6,18 +6,18 @@ import java.util.ArrayList;
 class Traversal<K extends Comparable<K>,V> {
 
     public static class SiblingRelation<T extends Comparable<T>,U> {
-        private final Branch<T,U> commonParent;
-        private final int parentIndex;
+        private final Branch<T,U> parent;
+        private final int index;
         private final Node<T,U> sibling;
 
-        private SiblingRelation(final Branch<T,U> commonParent, final int parentIndex, final Node<T,U> sibling) {
-            this.commonParent = commonParent;
-            this.parentIndex = parentIndex;
+        private SiblingRelation(final Branch<T,U> parent, final int index, final Node<T,U> sibling) {
+            this.parent = parent;
+            this.index = index;
             this.sibling = sibling;
         }
 
-        public Branch<T,U> getCommonParent() { return commonParent; }
-        public int getParentIndex() { return parentIndex; }
+        public Branch<T,U> getParent() { return parent; }
+        public int getIndex() { return index; }
         public Node<T,U> getSibling() { return sibling; }
     }
     
@@ -118,7 +118,7 @@ class Traversal<K extends Comparable<K>,V> {
         this.orphan = val;
     }
 
-    public SiblingRelation<K,V> getLeftSiblingWithRoom() {
+    public SiblingRelation<K,V> getLeftSibling() {
         final Entry<K,V> parentEntry = parent();
         if(parentEntry == null) {
             return null;
@@ -139,18 +139,18 @@ class Traversal<K extends Comparable<K>,V> {
         }
         else if(parentEntry.direction == Direction.LEFT && parentEntry.index == 0) {
             final Entry<K,V> grandEntry = grandparent();
-            if(grandEntry == null) {
+            if(grandEntry == null || grandEntry.direction == Direction.LEFT) {
                 return null;
             }
 
             final Branch<K,V> grandparent = grandEntry.node.asBranch();
             final Branch<K,V> uncle = grandparent.left(grandEntry.index).asBranch();
             parent = grandparent;
-            parentIndex = parentEntry.index;
+            parentIndex = grandEntry.index;
             sibling = uncle.right(uncle.size() - 1);
         }
 
-        if(sibling != null && !sibling.isFull()) {
+        if(sibling != null) {
             return new SiblingRelation<>(parent, parentIndex, sibling);
         }
         else {
@@ -158,7 +158,7 @@ class Traversal<K extends Comparable<K>,V> {
         }
     }
 
-    public SiblingRelation<K,V> getRightSiblingWithRoom() {
+    public SiblingRelation<K,V> getRightSibling() {
         final Entry<K,V> parentEntry = parent();
         if(parentEntry == null) {
             return null;
@@ -179,18 +179,18 @@ class Traversal<K extends Comparable<K>,V> {
         }
         else if(parentEntry.direction == Direction.RIGHT && (parentEntry.index + 1) == parentEntry.node.size()) {
             final Entry<K,V> grandEntry = grandparent();
-            if(grandEntry == null) {
+            if(grandEntry == null || grandEntry.direction == Direction.RIGHT) {
                 return null;
             }
 
             final Branch<K,V> grandparent = grandEntry.node.asBranch();
             final Branch<K,V> uncle = grandparent.right(grandEntry.index).asBranch();
             parent = grandparent;
-            parentIndex = parentEntry.index;
+            parentIndex = grandEntry.index;
             sibling = uncle.left(0);
         }
 
-        if(sibling != null && !sibling.isFull()) {
+        if(sibling != null) {
             return new SiblingRelation<>(parent, parentIndex, sibling);
         }
         else {
