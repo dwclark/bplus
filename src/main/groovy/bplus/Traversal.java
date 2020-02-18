@@ -110,103 +110,106 @@ class Traversal<K extends Comparable<K>,V> {
         return orphan != null;
     }
 
-    public Node<K,V> getOrphan() {
-        return orphan;
+    public Node<K,V> adoptOrphan() {
+        final Node<K,V> ret = orphan;
+        orphan = null;
+        return ret;
     }
 
-    public void setOrphan(final Node<K,V> val) {
+    public void disown(final Node<K,V> val) {
         this.orphan = val;
     }
 
     public SiblingRelation<K,V> getLeftSibling() {
-        final Entry<K,V> parentEntry = parent();
+        final Entry<K,V> parentEntry = getParent();
         if(parentEntry == null) {
             return null;
         }
 
-        Branch<K,V> parent = null;
-        int parentIndex = -1;
-        Node<K,V> sibling = null;
         if(parentEntry.direction == Direction.RIGHT) {
-            parent = parentEntry.node.asBranch();
-            parentIndex = parentEntry.index;
-            sibling = parent.left(parentEntry.index);
+            final Branch<K,V> parent = parentEntry.node.asBranch();
+            final int index = parentEntry.index;
+            final Node<K,V> sibling = parent.left(index);
+            if(sibling != null) {
+                return new SiblingRelation<>(parent, index, sibling);
+            }
         }
         else if(parentEntry.direction == Direction.LEFT && parentEntry.index > 0) {
-            parent = parentEntry.node.asBranch();
-            parentIndex = parentEntry.index - 1;
-            sibling = parent.left(parentIndex);
+            final Branch<K,V> parent = parentEntry.node.asBranch();
+            final int index = parentEntry.index - 1;
+            final Node<K,V> sibling = parent.left(index);
+            if(sibling != null) {
+                return new SiblingRelation<>(parent, index, sibling);
+            }
         }
         else if(parentEntry.direction == Direction.LEFT && parentEntry.index == 0) {
-            final Entry<K,V> grandEntry = grandparent();
+            final Entry<K,V> grandEntry = getGrandparent();
             if(grandEntry == null || grandEntry.direction == Direction.LEFT) {
                 return null;
             }
 
             final Branch<K,V> grandparent = grandEntry.node.asBranch();
             final Branch<K,V> uncle = grandparent.left(grandEntry.index).asBranch();
-            parent = grandparent;
-            parentIndex = grandEntry.index;
-            sibling = uncle.right(uncle.size() - 1);
+            final int index = grandEntry.index;
+            final Node<K,V> cousin = uncle.right(uncle.size() - 1);
+            if(cousin != null) {
+                return new SiblingRelation<>(grandparent, index, cousin);
+            }
         }
 
-        if(sibling != null) {
-            return new SiblingRelation<>(parent, parentIndex, sibling);
-        }
-        else {
-            return null;
-        }
+        return null;
     }
 
     public SiblingRelation<K,V> getRightSibling() {
-        final Entry<K,V> parentEntry = parent();
+        final Entry<K,V> parentEntry = getParent();
         if(parentEntry == null) {
             return null;
         }
 
-        Branch<K,V> parent = null;
-        int parentIndex = -1;
-        Node<K,V> sibling = null;
         if(parentEntry.direction == Direction.LEFT) {
-            parent = parentEntry.node.asBranch();
-            parentIndex = parentEntry.index;
-            sibling = parent.right(parentEntry.index);
+            final Branch<K,V> parent = parentEntry.node.asBranch();
+            final int index = parentEntry.index;
+            final Node<K,V> sibling = parent.right(index);
+            if(sibling != null) {
+                return new SiblingRelation<>(parent, index, sibling);
+            }
         }
         else if(parentEntry.direction == Direction.RIGHT && (parentEntry.index + 1) < parentEntry.node.size()) {
-            parent = parentEntry.node.asBranch();
-            parentIndex = parentEntry.index + 1;
-            sibling = parent.right(parentIndex);
+            final Branch<K,V> parent = parentEntry.node.asBranch();
+            final int index = parentEntry.index + 1;
+            final Node<K,V> sibling = parent.right(index);
+            if(sibling != null) {
+                return new SiblingRelation<>(parent, index, sibling);
+            }
         }
         else if(parentEntry.direction == Direction.RIGHT && (parentEntry.index + 1) == parentEntry.node.size()) {
-            final Entry<K,V> grandEntry = grandparent();
+            final Entry<K,V> grandEntry = getGrandparent();
             if(grandEntry == null || grandEntry.direction == Direction.RIGHT) {
                 return null;
             }
 
             final Branch<K,V> grandparent = grandEntry.node.asBranch();
             final Branch<K,V> uncle = grandparent.right(grandEntry.index).asBranch();
-            parent = grandparent;
-            parentIndex = grandEntry.index;
-            sibling = uncle.left(0);
+            final int index = grandEntry.index;
+            final Node<K,V> cousin = uncle.left(0);
+
+            if(cousin != null) {
+                return new SiblingRelation<>(grandparent, index, cousin);
+            }
         }
 
-        if(sibling != null) {
-            return new SiblingRelation<>(parent, parentIndex, sibling);
-        }
-        else {
-            return null;
-        }
+        return null;
     }
 
     public Entry<K,V> getCurrent() {
         return all.get(level());
     }
 
-    public Entry<K,V> parent() {
+    public Entry<K,V> getParent() {
         return (level() - 1 >= 0) ? all.get(level() - 1) : null;
     }
 
-    public Entry<K,V> grandparent() {
+    public Entry<K,V> getGrandparent() {
         return (level() - 2 >= 0) ? all.get(level() - 2) : null;
     }
 

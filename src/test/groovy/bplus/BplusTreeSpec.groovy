@@ -2,6 +2,7 @@ package bplus;
 
 import spock.lang.*
 import bplus.impl.ObjectArray
+import java.util.concurrent.ThreadLocalRandom;
 
 class BplusTreeSpec extends Specification {
 
@@ -112,10 +113,12 @@ class BplusTreeSpec extends Specification {
             def list = new ArrayList(max)
             (0..<max).each { list.add(it) }
             Collections.shuffle(list)
+            def branchOrder = ThreadLocalRandom.current().nextInt(6,12)
+            def leafOrder = ThreadLocalRandom.current().nextInt(6,12)
 
             def toAdd, index, keyList, sortedKeyList, nodeKeyList, sortedNodeKeyList;
             try {
-                def oa = new ObjectArray(Integer, Integer, 8)
+                def oa = new ObjectArray(Integer, Integer, branchOrder, leafOrder)
                 def btree = new BplusTree(oa)
                 list.eachWithIndex { num, i ->
                     toAdd = num
@@ -143,11 +146,13 @@ class BplusTreeSpec extends Specification {
                 }
             }
             catch(Exception e) {
+                println "branchOrder: ${branchOrder}, leafOrder ${leafOrder}"
                 println "adding ${toAdd} at index ${index}"
                 println "nodeKeyList:       ${nodeKeyList}"
                 println "sortedNodeKeyList: ${sortedNodeKeyList}"
                 println "keyList:       ${keyList}"
                 println "sortedKeyList: ${sortedKeyList}"
+                println "all: ${list}"
                 throw e
             }
         }

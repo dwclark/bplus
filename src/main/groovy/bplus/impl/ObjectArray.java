@@ -6,14 +6,20 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
 
     private final Class<K> keyType;
     private final Class<V> valueType;
-    private final int order;
+    private final int branchOrder;
+    private final int leafOrder;
     
     private Node<K,V> root;
 
     public ObjectArray(final Class<K> keyType, final Class<V> valueType, final int order) {
+        this(keyType, valueType, order, order);
+    }
+
+    public ObjectArray(final Class<K> keyType, final Class<V> valueType, final int branchOrder, final int leafOrder) {
         this.keyType = keyType;
         this.valueType = valueType;
-        this.order = order;
+        this.branchOrder = branchOrder;
+        this.leafOrder = leafOrder;
         this.root = new _Leaf();
     }
 
@@ -44,7 +50,6 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
             return new _Leaf();
         }
 
-        public int order() { return order; }
         public void done() {}
 
         protected int check(final int index) {
@@ -57,7 +62,7 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
     }
 
     private class _Branch extends Base implements Branch<K,V> {
-        protected _Branch() { super(1 + 2 * order); }
+        protected _Branch() { super(1 + 2 * branchOrder); }
 
         public Branch<K,V> put(final int index, final Node<K,V> left, final K k, final Node<K,V> right) {
             check(index);
@@ -72,6 +77,8 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
             }
             return this;
         }
+
+        public int order() { return branchOrder; }
 
         public Node<K,V> nullNode() {
             return null;
@@ -131,7 +138,7 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
     }
     
     private class _Leaf extends Base implements Leaf<K,V> {
-        protected _Leaf() { super(2 * order); }
+        protected _Leaf() { super(2 * leafOrder); }
 
         public Leaf<K,V> put(final int index, final K k, final V v) {
             check(index);
@@ -148,6 +155,8 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
             System.arraycopy(src.ary, srcIndex, ary, destIndex, length);
             return this;
         }
+
+        public int order() { return leafOrder; }
         
         public K key(final int index) { return keyType.cast(ary[keyIndex(check(index))]); }
         public V value(final int index) { return valueType.cast(ary[valueIndex(check(index))]); }

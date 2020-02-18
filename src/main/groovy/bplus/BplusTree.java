@@ -114,7 +114,8 @@ public class BplusTree<K extends Comparable<K>,V>  {
         if(traversal.hasOrphan()) {
             final Branch<K,V> newRoot = store.getRoot().newBranch();
             newRoot.sizeUp(1);
-            newRoot.put(0, store.getRoot(), traversal.getOrphan().getMinKey(), traversal.getOrphan());
+            final Node<K,V> orphan = traversal.adoptOrphan();
+            newRoot.put(0, store.getRoot(), orphan.getMinKey(), orphan);
             store.setRoot(newRoot);
         }
     }
@@ -165,7 +166,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
         }
 
         final Leaf<K,V> newRightSibling = leaf.split(k, v);
-        traversal.setOrphan(newRightSibling);
+        traversal.disown(newRightSibling);
         if(leftRel != null) {
             leftRel.getParent().put(leftRel.getIndex(), leaf.getMinKey());
         }
@@ -174,13 +175,12 @@ public class BplusTree<K extends Comparable<K>,V>  {
     private void putBranch(final Traversal<K,V> traversal) {
         final Traversal.Entry<K,V> currentEntry = traversal.getCurrent();
         final Branch<K,V> current = currentEntry.getNode().asBranch();
-        final Node<K,V> orphan = traversal.getOrphan();
-        traversal.setOrphan(null);
+        final Node<K,V> orphan = traversal.adoptOrphan();
 
         if(!current.isFull()) {
             final int nodeIndex = current.insert(orphan);
             if(nodeIndex == 0) {
-                final Traversal.Entry<K,V> parentEntry = traversal.parent();
+                final Traversal.Entry<K,V> parentEntry = traversal.getParent();
                 if(parentEntry != null && parentEntry.getDirection() == Direction.RIGHT) {
                     final Branch<K,V> parent = parentEntry.getNode().asBranch();
                     parent.put(parentEntry.getIndex(), orphan.getMinKey());
@@ -202,7 +202,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
             current.shiftLeft(1, 1).sizeDown(1);
             current.insert(orphan);
 
-            //reset parent key
+            //reset getParent key
             leftRel.getParent().put(leftRel.getIndex(), current.getMinKey());
             return;
         }
@@ -229,7 +229,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
         }
 
         final Node<K,V> newRight = current.split(orphan);
-        traversal.setOrphan(newRight);
+        traversal.disown(newRight);
         if(leftRel != null) {
             leftRel.getParent().put(leftRel.getIndex(), current.getMinKey());
         }
@@ -242,36 +242,4 @@ public class BplusTree<K extends Comparable<K>,V>  {
         return index >= 0 ? leaf.value(index) : null;
     }
 
-    public V remove(final K k) {
-        final Node<K,V> root = store.getRoot();
-        final V ret = delete(root, k);
-        if(ret == null) {
-            return null;
-        }
-        
-        if(root.size() > 1 || root.isLeaf()) {
-            return ret;
-        }
-
-        final Branch<K,V> branch = root.asBranch();
-        final Node<K,V> left = branch.left(0);
-        final Node<K,V> right = branch.right(0);
-        if(left.size() == 0) {
-            left.done();
-            store.setRoot(right);
-            root.done();
-        }
-
-        if(right.size() == 0) {
-            right.done();
-            store.setRoot(left);
-            root.done();
-        }
-
-        return ret;
-    }
-
-    private V delete(final Node<K,V> node, final K k) {
-        throw new UnsupportedOperationException();
-    }
 }

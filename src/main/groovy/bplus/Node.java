@@ -29,6 +29,18 @@ public interface Node<K extends Comparable<K>,V> {
     default boolean isFull() {
         return size() == order();
     }
+
+    default int getMinLimit() {
+        return (order() >>> 1) + (isEvenSized() ? 0 : 1);
+    }
+
+    default boolean isBelowLimit() {
+        return size() < getMinLimit();
+    }
+
+    default boolean hasAvailable() {
+        return size() > getMinLimit();
+    }
     
     default int compare(int index, K rhs) {
         return key(index).compareTo(rhs);
