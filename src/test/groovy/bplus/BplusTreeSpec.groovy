@@ -106,7 +106,7 @@ class BplusTreeSpec extends Specification {
         oa.root.keys() == [5, 501, 1001, 1005 ]
     }
 
-    def "test man random"() {
+    def "test add random"() {
         setup:
         10.times {
             def max = 4_096
@@ -169,9 +169,195 @@ class BplusTreeSpec extends Specification {
         def btree = new BplusTree(oa)
         list.each { num -> btree.put(num, num) }
 
-        println btree.height()
-
         expect:
-        btree.height() == 5 //(9^4) + 1 level for leaves
+        btree.height() >= 4
+    }
+
+    def "test leaf remove"() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 8)
+        def btree = new BplusTree(oa)
+        (0..7).each { num -> btree.put(num, num) }
+
+        when:
+        btree.remove(12)
+
+        then:
+        oa.root.size() == 8
+
+        when:
+        btree.remove(7)
+
+        then:
+        oa.root.keys() == [0,1,2,3,4,5,6]
+        oa.root.size() == 7
+
+        when:
+        btree.remove(1)
+        btree.remove(4)
+
+        then:
+        oa.root.keys() == [0,2,3,5,6]
+        oa.root.size() == 5
+
+        when:
+        [0,2,3,5,6].each { btree.remove(it) }
+
+        then:
+        oa.root.keys() == []
+        oa.root.size() == 0
+    }
+
+    def "test right leaf sibling borrow and merge"() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 4)
+        def btree = new BplusTree(oa)
+
+        when:
+        (1..20).each { num -> btree.put(num, num) }
+
+        then:
+        oa.root.keys() == [5,9,13,17]
+        oa.root.left(0).keys() == [1,2,3,4]
+        oa.root.left(1).keys() == [5,6,7,8]
+        oa.root.left(2).keys() == [9,10,11,12]
+        oa.root.left(3).keys() == [13,14,15,16]
+        oa.root.right(3).keys() == [17,18,19,20]
+
+        when:
+        btree.remove(1);
+
+        then:
+        oa.root.keys() == [5,9,13,17]
+        oa.root.left(0).keys() == [2,3,4]
+
+        when:
+        btree.remove(2)
+
+        then:
+        oa.root.keys() == [5,9,13,17]
+        oa.root.left(0).keys() == [3,4]
+
+        when:
+        btree.remove(4)
+
+        then:
+        oa.root.left(0).keys() == [3,5]
+        oa.root.left(1).keys() == [6,7,8]
+        oa.root.keys() == [6,9,13,17]
+
+        when:
+        btree.remove(5)
+
+        then:
+        oa.root.left(0).keys() == [3,6]
+        oa.root.left(1).keys() == [7,8]
+        oa.root.keys() == [7,9,13,17]
+
+        when:
+        btree.remove(3)
+
+        then:
+        oa.root.left(0).keys() == [6,7,8]
+        oa.root.keys() == [9,13,17]
+    }
+
+    def "test left leaf sibling borrow and merge"() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 4)
+        def btree = new BplusTree(oa)
+
+        when:
+        (1..20).each { num -> btree.put(num, num) }
+        
+        then:
+        oa.root.keys() == [5,9,13,17]
+        oa.root.left(0).keys() == [1,2,3,4]
+        oa.root.left(1).keys() == [5,6,7,8]
+        oa.root.left(2).keys() == [9,10,11,12]
+        oa.root.left(3).keys() == [13,14,15,16]
+        oa.root.right(3).keys() == [17,18,19,20]
+
+        when:
+        btree.remove(19)
+
+        then:
+        oa.root.keys() == [5,9,13,17]
+        oa.root.right(3).keys() == [17,18,20]
+
+        when:
+        btree.remove(17)
+
+        then:
+        oa.root.keys() == [5,9,13,18]
+        oa.root.right(3).keys() == [18,20]
+
+        when:
+        btree.remove(18)
+
+        then:
+        oa.root.keys() == [5,9,13,16]
+        oa.root.left(3).keys() == [13,14,15]
+        oa.root.right(3).keys() == [16,20]
+
+        when:
+        btree.remove(13)
+        btree.remove(16)
+
+        then:
+        oa.root.keys() == [5,9,14]
+        oa.root.right(2).keys() == [14,15,20]
+        oa.root.size() == 3
+    }
+
+    //TODO: write better tests for removal of branch testing
+    def "test remove random"() {
+        setup:
+        def max = 128
+        def list = new ArrayList(max)
+        (0..<max).each { list.add(it) }
+        Collections.shuffle(list)
+        def oa = new ObjectArray(Integer, Integer, 4)
+        def btree = new BplusTree(oa)
+        list.each { btree.put(it, it) }
+        def removeList = new ArrayList(list)
+        Collections.shuffle(removeList)
+        
+        def toRemove, index, keyList, sortedKeyList, nodeKeyList, sortedNodeKeyList;
+        try {
+            removeList.eachWithIndex { num, i ->
+                toRemove = num
+                index = i
+                
+                btree.remove(toRemove)
+                nodeKeyList = btree.nodeKeyList()
+                sortedNodeKeyList = new ArrayList(nodeKeyList)
+                sortedNodeKeyList.sort()
+                keyList = btree.keyList()
+                sortedKeyList = new ArrayList(keyList)
+                sortedKeyList.sort()
+                
+                if((nodeKeyList as Set).size() != nodeKeyList.size()) {
+                    throw new RuntimeException("duplicates in keylist");
+                }
+                
+                if(keyList != sortedKeyList) {
+                    throw new RuntimeException("list no longer sorted")
+                }
+                
+                if(nodeKeyList != sortedNodeKeyList) {
+                    throw new RuntimeException('node key list no longer sorted')
+                }
+            }
+        }
+        catch(Exception e) {
+            println "removing ${toRemove} at index ${index}"
+            println "nodeKeyList:       ${nodeKeyList}"
+            println "sortedNodeKeyList: ${sortedNodeKeyList}"
+            println "keyList:       ${keyList}"
+            println "sortedKeyList: ${sortedKeyList}"
+            println "all: ${removeList}"
+            throw e
+        }
     }
 }

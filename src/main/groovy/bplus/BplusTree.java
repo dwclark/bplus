@@ -192,17 +192,12 @@ public class BplusTree<K extends Comparable<K>,V>  {
 
         final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
         if(leftRel != null && !leftRel.getSibling().isFull()) {
-            //move min to left sibling
             final Branch<K,V> sibling = leftRel.getSibling().asBranch();
             final Node<K,V> toMove = current.left(0);
             sibling.sizeUp(1);
             sibling.put(sibling.size() - 1, toMove.getMinKey(), toMove);
-
-            //insert into current
             current.shiftLeft(1, 1).sizeDown(1);
             current.insert(orphan);
-
-            //reset getParent key
             leftRel.getParent().put(leftRel.getIndex(), current.getMinKey());
             return;
         }
@@ -242,4 +237,168 @@ public class BplusTree<K extends Comparable<K>,V>  {
         return index >= 0 ? leaf.value(index) : null;
     }
 
+    public V remove(final K k) {
+        final Node<K,V> root = store.getRoot();
+        final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
+        final Leaf<K,V> leaf = traversal.getCurrent().getNode().asLeaf();
+        final int index = leaf.search(k);
+        final V ret = (index >= 0) ? leaf.value(index) : null;
+        if(index >= 0) {
+            while(traversal.level() >= 0) {
+                final Node<K,V> current = traversal.getCurrent().getNode();
+                
+                if(current.isLeaf()) {
+                    removeLeaf(traversal, index);
+                    traversal.pop();
+                }
+                else if(current != root && current.isBelowLimit()) {
+                    removeBranch(traversal);
+                    traversal.pop();
+                }
+                else {
+                    break;
+                }
+            }
+
+            if(root.isBranch() && root.size() == 0) {
+                store.setRoot(root.asBranch().child(0));
+            }
+        }
+        
+        return ret;
+    }
+
+    private void removeLeaf(final Traversal<K,V> traversal, final int index) {
+        final Leaf<K,V> current = traversal.getCurrent().getNode().asLeaf();
+        final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
+        current.remove(index);
+        if(index == 0 && leftRel != null) {
+            leftRel.getParent().put(leftRel.getIndex(), current.getMinKey());
+        }
+        
+        if(!current.isBelowLimit()) {
+            return;
+        }
+        
+        if(leftRel != null) {
+            final Leaf<K,V> sibling = leftRel.getSibling().asLeaf();
+            if(sibling.isAboveMinLimit()) {
+                final int lastIndex = sibling.size() - 1;
+                current.sizeUp(1);
+                current.shiftRight(0, 1);
+                current.put(0, sibling.key(lastIndex), sibling.value(lastIndex));
+                sibling.sizeDown(1);
+                leftRel.getParent().put(leftRel.getIndex(), current.getMinKey());
+            }
+            else {
+                final int copyIndex = sibling.size();
+                sibling.sizeUp(current.size());
+                sibling.copy(0, current, copyIndex, current.size());
+                final Traversal.Entry<K,V> parentEntry = traversal.getParent();
+                parentEntry.getNode().remove(parentEntry.getIndex());
+                current.done();
+            }
+
+            return;
+        }
+
+        final Traversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
+        if(rightRel != null) {
+            final Leaf<K,V> sibling = rightRel.getSibling().asLeaf();
+            if(sibling.isAboveMinLimit()) {
+                final int insertIndex = current.size();
+                current.sizeUp(1);
+                current.put(insertIndex, sibling.key(0), sibling.value(0));
+                sibling.shiftLeft(1, 1);
+                sibling.sizeDown(1);
+                rightRel.getParent().put(rightRel.getIndex(), sibling.getMinKey());
+            }
+            else {
+                sibling.sizeUp(current.size());
+                sibling.shiftRight(0, current.size());
+                sibling.copy(0, current, 0, current.size());
+                final Traversal.Entry<K,V> parentEntry = traversal.getParent();
+                parentEntry.getNode().remove(parentEntry.getIndex());
+                current.done();
+            }
+
+            return;
+        }
+    }
+
+    //TODO: need to reset parent entries with 0 index is removed
+    private void removeBranch(final Traversal<K,V> traversal) {
+        final Branch<K,V> current = traversal.getCurrent().getNode().asBranch();
+
+        final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
+        if(leftRel != null) {
+            final Branch<K,V> sibling = leftRel.getSibling().asBranch();
+            if(sibling.isAboveMinLimit()) {
+                current.sizeUp(1);
+                current.shiftRight(0, 1);
+                current.put(0, sibling.right(sibling.size() - 1), current.left(0).getMinKey());
+                sibling.sizeDown(1);
+                leftRel.getParent().put(leftRel.getIndex(), current.getMinKey());
+            }
+            else {
+                final int keyIndex = sibling.size();
+                final int insertIndex = keyIndex + 1;
+                sibling.sizeUp(current.size() + 1);
+                sibling.copy(0, current, insertIndex, current.size());
+                sibling.put(keyIndex, sibling.right(keyIndex).getMinKey());
+                final Traversal.Entry<K,V> parentEntry = traversal.getParent();
+                final Branch<K,V> parent = parentEntry.getNode().asBranch();
+                parent.remove(parentEntry.getIndex());
+
+                //need to reset the grandparent key if it exists
+                if(parentEntry.getIndex() == 0) {
+                    final Traversal.Entry<K,V> grandEntry = traversal.getGrandparent();
+                    if(grandEntry != null) {
+                        if(grandEntry.getDirection() == Direction.RIGHT) {
+                            grandEntry.getNode().asBranch().put(grandEntry.getIndex(), parent.getMinKey());
+                        }
+                        else if(grandEntry.getDirection() == Direction.LEFT &&
+                                grandEntry.getIndex() > 0) {
+                            grandEntry.getNode().asBranch().put(grandEntry.getIndex() - 1, parent.getMinKey());
+                        }
+                    }
+                }
+
+                current.done();
+            }
+            
+            return;
+        }
+
+        final Traversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
+        if(rightRel != null) {
+            final Branch<K,V> sibling = rightRel.getSibling().asBranch();
+            if(sibling.isAboveMinLimit()) {
+                final int insertIndex = current.size();
+                current.sizeUp(1);
+                final Node<K,V> toInsert = sibling.left(0);
+                current.put(insertIndex, toInsert.getMinKey(), toInsert);
+                sibling.shiftLeft(1, 1);
+                sibling.sizeDown(1);
+                rightRel.getParent().put(rightRel.getIndex(), sibling.getMinKey());
+            }
+            else {
+                sibling.sizeUp(current.size() + 1);
+                sibling.shiftRight(0, current.size() + 1);
+                sibling.copy(0, current, 0, current.size());
+                sibling.put(current.size(), sibling.right(current.size()).getMinKey());
+                rightRel.getParent().put(rightRel.getIndex(), sibling.getMinKey());
+
+                final Traversal.Entry<K,V> parentEntry = traversal.getParent();
+                final Branch<K,V> parent = parentEntry.getNode().asBranch();
+                parent.remove(parentEntry.getIndex());
+
+                //since we are the left-most node, there is no need to attempt to
+                //reset the min key since we are to the right of nobody 
+                current.done();
+            }
+
+            return;
+        }
+    }
 }

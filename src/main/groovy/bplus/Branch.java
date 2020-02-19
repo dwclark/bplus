@@ -18,6 +18,10 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
     default Leaf<K,V> asLeaf() {
         throw new ClassCastException("not a leaf");
     }
+
+    default int getMinLimit() {
+        return order() >>> 1;
+    }
     
     default boolean isBranch() {
         return true;

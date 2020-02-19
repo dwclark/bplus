@@ -9,13 +9,17 @@ import static bplus.Node.insertIndex;
 public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
     V value(int index);
     Leaf<K,V> put(int index, K k, V v);
-
+    
     default void removeMin() {
         shiftLeft(1, 1).sizeDown(1);
     }
 
     default void removeMax() {
         sizeDown(1);
+    }
+
+    default int getMinLimit() {
+        return (order() >>> 1) + (isEvenOrdered() ? 0 : 1);
     }
 
     default K getMinKey() {

@@ -1,6 +1,7 @@
 package bplus.impl;
 
 import bplus.*;
+import java.util.Arrays;
 
 public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
 
@@ -50,7 +51,9 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
             return new _Leaf();
         }
 
-        public void done() {}
+        public void done() {
+            Arrays.fill(ary, null);
+        }
 
         protected int check(final int index) {
             if(index >= size()) {
@@ -104,6 +107,15 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
             System.arraycopy(src.ary, srcIndex, ary, destIndex, length);
             return this;
         }
+
+        @Override
+        public void size(final int newSize) {
+            if(newSize < size()) {
+                Arrays.fill(ary, keyIndex(newSize), ary.length, null);
+            }
+
+            super.size(newSize);
+        }
         
         private int leftIndex(final int index) { return index << 1; }
         private int keyIndex(final int index) { return leftIndex(index) + 1; }
@@ -156,10 +168,21 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
             return this;
         }
 
+        @Override
+        public void size(final int newSize) {
+            final int current = size();
+            if(newSize < current) {
+                Arrays.fill(ary, keyIndex(newSize), ary.length, null);
+            }
+
+            super.size(newSize);
+        }
+
         public int order() { return leafOrder; }
         
         public K key(final int index) { return keyType.cast(ary[keyIndex(check(index))]); }
         public V value(final int index) { return valueType.cast(ary[valueIndex(check(index))]); }
+
         private int keyIndex(final int index) { return index << 1; }
         private int valueIndex(final int index) { return keyIndex(index) + 1; }
 
