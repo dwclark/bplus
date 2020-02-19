@@ -310,54 +310,43 @@ class BplusTreeSpec extends Specification {
         oa.root.size() == 3
     }
 
-    //TODO: write better tests for removal of branch testing
-    def "test remove random"() {
+    def "test left leaf remove"() {
         setup:
-        def max = 128
-        def list = new ArrayList(max)
-        (0..<max).each { list.add(it) }
-        Collections.shuffle(list)
         def oa = new ObjectArray(Integer, Integer, 4)
         def btree = new BplusTree(oa)
-        list.each { btree.put(it, it) }
-        def removeList = new ArrayList(list)
-        Collections.shuffle(removeList)
         
-        def toRemove, index, keyList, sortedKeyList, nodeKeyList, sortedNodeKeyList;
-        try {
-            removeList.eachWithIndex { num, i ->
-                toRemove = num
-                index = i
-                
-                btree.remove(toRemove)
-                nodeKeyList = btree.nodeKeyList()
-                sortedNodeKeyList = new ArrayList(nodeKeyList)
-                sortedNodeKeyList.sort()
-                keyList = btree.keyList()
-                sortedKeyList = new ArrayList(keyList)
-                sortedKeyList.sort()
-                
-                if((nodeKeyList as Set).size() != nodeKeyList.size()) {
-                    throw new RuntimeException("duplicates in keylist");
-                }
-                
-                if(keyList != sortedKeyList) {
-                    throw new RuntimeException("list no longer sorted")
-                }
-                
-                if(nodeKeyList != sortedNodeKeyList) {
-                    throw new RuntimeException('node key list no longer sorted')
-                }
-            }
-        }
-        catch(Exception e) {
-            println "removing ${toRemove} at index ${index}"
-            println "nodeKeyList:       ${nodeKeyList}"
-            println "sortedNodeKeyList: ${sortedNodeKeyList}"
-            println "keyList:       ${keyList}"
-            println "sortedKeyList: ${sortedKeyList}"
-            println "all: ${removeList}"
-            throw e
-        }
+        when:
+        (1..100).each { num -> btree.put(num, num) }
+        def upperLeft = oa.root.left(0);
+        def farLeft = upperLeft.left(0);
+        def nextLeft = upperLeft.right(0);
+        
+        then:
+        farLeft.keys() == [1,2,3,4]
+        nextLeft.keys() == [5,6,7,8]
+
+        when:
+        [1,2,3,4].each { btree.remove(it) }
+
+        then:
+        farLeft.keys() == [5,6]
+        nextLeft.keys() == [7,8]
+
+        when:
+        btree.remove(5)
+        farLeft = upperLeft.left(0)
+        
+        then:
+        upperLeft.size() == 3
+        farLeft.keys() == [6,7,8]
+        upperLeft.keys() == [9,13,17]
+
+        when:
+        [6,7,8,9,10,11,12,13,14,15,16,17,18].each { btree.remove(it) }
+
+        then:
+        upperLeft.size() == 2
+        
     }
+
 }
