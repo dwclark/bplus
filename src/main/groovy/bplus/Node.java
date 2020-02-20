@@ -17,7 +17,6 @@ public interface Node<K extends Comparable<K>,V> {
     Branch<K,V> newBranch();
     Leaf<K,V> newLeaf();
     K getMinKey();
-    int getMinLimit();
     
     default boolean isLeaf() {
         return !isBranch();
@@ -33,6 +32,10 @@ public interface Node<K extends Comparable<K>,V> {
 
     default boolean isFull() {
         return size() == order();
+    }
+
+    default int getMinLimit() {
+        return (order() >>> 1) + (isEvenOrdered() ? 0 : 1);
     }
 
     default boolean isBelowLimit() {

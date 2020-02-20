@@ -27,10 +27,6 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
         remove(size() - 1);
     }
 
-    default int getMinLimit() {
-        return (order() >>> 1) + (isEvenOrdered() ? 0 : 1);
-    }
-
     default K getMinKey() {
         return key(0);
     }

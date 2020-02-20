@@ -23,20 +23,25 @@ class Traversal<K extends Comparable<K>,V> {
     
     public static class Entry<T extends Comparable<T>,U> {
         private Node<T,U> node = null;
+        private Direction direction = null;
         private int index = -1;
         
         public Entry<T,U> setNode(final Node<T,U> val) { node = val; return this; }
         public Node<T,U> getNode() { return node; }
+
+        public Entry<T,U> setDirection(final Direction val) { direction = val; return this; }
+        public Direction getDirection() { return direction; }
 
         public Entry<T,U> setIndex(final int val) { index = val; return this; }
         public int getIndex() { return index; }
 
         public void clear() {
             node = null;
+            direction = null;
             index = -1;
         }
     }
-    
+
     private static final int DEFAULT = 5;
     private final List<Node<K,V>> doneNodes;
     private final List<Entry<K,V>> all;
@@ -80,16 +85,32 @@ class Traversal<K extends Comparable<K>,V> {
         Node<K,V> current = root;
         while(!current.isLeaf()) {
             final Branch<K,V> branch = current.asBranch();
-            final int navIndex = navigateIndex(branch.search(k));
-            current = next().setNode(current).setIndex(navIndex).getNode();
+            final int searchIndex = branch.search(k);
+            final Direction dir = direction(searchIndex, branch);
+            final int navIndex = navigateIndex(searchIndex, branch);
+            current = (dir == Direction.LEFT) ? goLeft(branch, navIndex) : goRight(branch, navIndex);
         }
 
-        next().setNode(current).setIndex(0);
+        goLeaf(current);
         return this;
     }
 
     public int level() {
         return count - 1;
+    }
+
+    public void goLeaf(final Node<K,V> node) {
+        next().setNode(node).setDirection(Direction.NONE).setIndex(0);
+    }
+
+    public Node<K,V> goLeft(final Branch<K,V> node, final int index) {
+        next().setNode(node).setDirection(Direction.LEFT).setIndex(index);
+        return node.left(index);
+    }
+
+    public Node<K,V> goRight(final Branch<K,V> node, final int index) {
+        next().setNode(node).setDirection(Direction.RIGHT).setIndex(index);
+        return node.right(index);
     }
 
     public void pop() {
@@ -117,23 +138,38 @@ class Traversal<K extends Comparable<K>,V> {
             return null;
         }
 
-        if(parentEntry.index > 0) {
+        if(parentEntry.direction == Direction.RIGHT) {
             final Branch<K,V> parent = parentEntry.node.asBranch();
             final int index = parentEntry.index;
-            return new SiblingRelation<>(parent, index, parent.child(index - 1));
+            final Node<K,V> sibling = parent.left(index);
+            if(sibling != null) {
+                return new SiblingRelation<>(parent, index, sibling);
+            }
         }
-        else {
+        else if(parentEntry.direction == Direction.LEFT && parentEntry.index > 0) {
+            final Branch<K,V> parent = parentEntry.node.asBranch();
+            final int index = parentEntry.index - 1;
+            final Node<K,V> sibling = parent.left(index);
+            if(sibling != null) {
+                return new SiblingRelation<>(parent, index, sibling);
+            }
+        }
+        else if(parentEntry.direction == Direction.LEFT && parentEntry.index == 0) {
             final Entry<K,V> grandEntry = getGrandparent();
-            if(grandEntry == null || grandEntry.index == 0) {
+            if(grandEntry == null || grandEntry.direction == Direction.LEFT) {
                 return null;
             }
 
             final Branch<K,V> grandparent = grandEntry.node.asBranch();
-            final Branch<K,V> uncle = grandparent.child(grandEntry.index - 1).asBranch();
+            final Branch<K,V> uncle = grandparent.left(grandEntry.index).asBranch();
             final int index = grandEntry.index;
-            final Node<K,V> cousin = uncle.child(uncle.size() - 1);
-            return new SiblingRelation<>(grandparent, index, cousin);
+            final Node<K,V> cousin = uncle.right(uncle.size() - 1);
+            if(cousin != null) {
+                return new SiblingRelation<>(grandparent, index, cousin);
+            }
         }
+
+        return null;
     }
 
     public SiblingRelation<K,V> getRightSibling() {
@@ -142,23 +178,39 @@ class Traversal<K extends Comparable<K>,V> {
             return null;
         }
 
-        if(parentEntry.index + 1 < parentEntry.node.size()) {
+        if(parentEntry.direction == Direction.LEFT) {
             final Branch<K,V> parent = parentEntry.node.asBranch();
             final int index = parentEntry.index;
-            return new SiblingRelation<>(parent, index, parent.child(index + 1));
+            final Node<K,V> sibling = parent.right(index);
+            if(sibling != null) {
+                return new SiblingRelation<>(parent, index, sibling);
+            }
         }
-        else {
+        else if(parentEntry.direction == Direction.RIGHT && (parentEntry.index + 1) < parentEntry.node.size()) {
+            final Branch<K,V> parent = parentEntry.node.asBranch();
+            final int index = parentEntry.index + 1;
+            final Node<K,V> sibling = parent.right(index);
+            if(sibling != null) {
+                return new SiblingRelation<>(parent, index, sibling);
+            }
+        }
+        else if(parentEntry.direction == Direction.RIGHT && (parentEntry.index + 1) == parentEntry.node.size()) {
             final Entry<K,V> grandEntry = getGrandparent();
-            if(grandEntry == null || (grandEntry.index + 1 == grandEntry.node.size())) {
+            if(grandEntry == null || grandEntry.direction == Direction.RIGHT) {
                 return null;
             }
-            
+
             final Branch<K,V> grandparent = grandEntry.node.asBranch();
+            final Branch<K,V> uncle = grandparent.right(grandEntry.index).asBranch();
             final int index = grandEntry.index;
-            final Branch<K,V> uncle = grandparent.child(index + 1).asBranch();
-            final Node<K,V> cousin = uncle.child(0);
-            return new SiblingRelation<>(grandparent, index, cousin);
+            final Node<K,V> cousin = uncle.left(0);
+
+            if(cousin != null) {
+                return new SiblingRelation<>(grandparent, index, cousin);
+            }
         }
+
+        return null;
     }
 
     public Entry<K,V> getCurrent() {
@@ -186,12 +238,31 @@ class Traversal<K extends Comparable<K>,V> {
         }
     }
 
-    private static int navigateIndex(final int index) {
+    private Direction direction(final int index, final Branch<K,V> branch) {
+        if(index >= 0) {
+            return Direction.RIGHT;
+        }
+        
+        final int retIndex = Node.insertIndex(index);
+        if(retIndex < branch.size()) {
+            return Direction.LEFT;
+        }
+        else {
+            return Direction.RIGHT;
+        }
+    }
+
+    private int navigateIndex(final int index, final Branch<K,V> branch) {
         if(index >= 0) {
             return index;
         }
         
-        final int retIndex = Node.insertIndex(index);
-        return (retIndex == 0) ? retIndex : retIndex - 1;
+        int retIndex = Node.insertIndex(index);
+        if(retIndex < branch.size()) {
+            return retIndex;
+        }
+        else {
+            return retIndex - 1;
+        }
     }
 }
