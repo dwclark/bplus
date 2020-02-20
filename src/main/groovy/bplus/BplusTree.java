@@ -261,8 +261,11 @@ public class BplusTree<K extends Comparable<K>,V>  {
             }
 
             if(root.isBranch() && root.size() == 0) {
+                traversal.addDone(root);
                 store.setRoot(root.asBranch().child(0));
             }
+
+            traversal.done();
         }
         
         return ret;
@@ -295,8 +298,9 @@ public class BplusTree<K extends Comparable<K>,V>  {
                 sibling.sizeUp(current.size());
                 sibling.copy(0, current, copyIndex, current.size());
                 final Traversal.Entry<K,V> parentEntry = traversal.getParent();
-                parentEntry.getNode().remove(parentEntry.getIndex());
-                current.done();
+                final Branch<K,V> parent = parentEntry.getNode().asBranch();
+                parent.remove(parentEntry.getIndex(), parentEntry.getDirection());
+                traversal.addDone(current);
             }
 
             return;
@@ -318,15 +322,15 @@ public class BplusTree<K extends Comparable<K>,V>  {
                 sibling.shiftRight(0, current.size());
                 sibling.copy(0, current, 0, current.size());
                 final Traversal.Entry<K,V> parentEntry = traversal.getParent();
-                parentEntry.getNode().remove(parentEntry.getIndex());
-                current.done();
+                final Branch<K,V> parent = parentEntry.getNode().asBranch();
+                parent.remove(parentEntry.getIndex(), parentEntry.getDirection());
+                traversal.addDone(current);
             }
 
             return;
         }
     }
 
-    //TODO: need to reset parent entries with 0 index is removed
     private void removeBranch(final Traversal<K,V> traversal) {
         final Branch<K,V> current = traversal.getCurrent().getNode().asBranch();
 
@@ -348,7 +352,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
                 sibling.put(keyIndex, sibling.right(keyIndex).getMinKey());
                 final Traversal.Entry<K,V> parentEntry = traversal.getParent();
                 final Branch<K,V> parent = parentEntry.getNode().asBranch();
-                parent.remove(parentEntry.getIndex());
+                parent.remove(parentEntry.getIndex(), parentEntry.getDirection());
 
                 //need to reset the grandparent key if it exists
                 if(parentEntry.getIndex() == 0) {
@@ -364,7 +368,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
                     }
                 }
 
-                current.done();
+                traversal.addDone(current);
             }
             
             return;
@@ -391,11 +395,11 @@ public class BplusTree<K extends Comparable<K>,V>  {
 
                 final Traversal.Entry<K,V> parentEntry = traversal.getParent();
                 final Branch<K,V> parent = parentEntry.getNode().asBranch();
-                parent.remove(parentEntry.getIndex());
+                parent.remove(parentEntry.getIndex(), parentEntry.getDirection());
 
                 //since we are the left-most node, there is no need to attempt to
                 //reset the min key since we are to the right of nobody 
-                current.done();
+                traversal.addDone(current);
             }
 
             return;

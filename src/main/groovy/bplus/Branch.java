@@ -143,4 +143,22 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
 
         return left.asLeaf().getMinKey();
     }
+
+    /*default void remove(final int index, final Direction direction) {
+        final int shiftIndex = index + 1;
+        if(shiftIndex == 1 || shiftIndex < size()) {
+            shiftLeft(shiftIndex, 1);
+        }
+        
+        sizeDown(1);
+        }*/
+
+    default void remove(final int index, final Direction direction) {
+        final int shiftIndex = index + (direction == Direction.LEFT ? 1 : 2);
+        if(shiftIndex == 1 || shiftIndex < size()) {
+            shiftLeft(shiftIndex, 1);
+        }
+        
+        sizeDown(1);
+    }
 }

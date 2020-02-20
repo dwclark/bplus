@@ -73,15 +73,6 @@ public interface Node<K extends Comparable<K>,V> {
         return insertIndex(low);
     }
 
-    default void remove(final int index) {
-        final int shiftIndex = index + 1;
-        if(shiftIndex < size()) {
-            shiftLeft(shiftIndex, 1);
-        }
-        
-        sizeDown(1);
-    }
-
     default Node<K,V> sizeUp(final int by) {
         size(size() + by);
         return this;

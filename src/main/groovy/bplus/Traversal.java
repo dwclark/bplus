@@ -43,13 +43,14 @@ class Traversal<K extends Comparable<K>,V> {
     }
 
     private static final int DEFAULT = 5;
-
+    private final List<Node<K,V>> doneNodes;
     private final List<Entry<K,V>> all;
     private int count;
     private Node<K,V> orphan;
     
     Traversal() {
-        this.all = new ArrayList<>();
+        this.all = new ArrayList<>(DEFAULT);
+        this.doneNodes = new ArrayList<>(2);
         this.count = 0;
         this.orphan = null;
 
@@ -63,9 +64,20 @@ class Traversal<K extends Comparable<K>,V> {
             all.get(i).clear();
         }
 
+        doneNodes.clear();
         count = 0;
         orphan = null;
         return this;
+    }
+
+    public void addDone(final Node<K,V> node) {
+        doneNodes.add(node);
+    }
+
+    public void done() {
+        for(Node<K,V> node : doneNodes) {
+            node.done();
+        }
     }
 
     public Traversal<K,V> execute(final Node<K,V> root, final K k) {

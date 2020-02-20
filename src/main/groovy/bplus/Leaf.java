@@ -10,12 +10,21 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
     V value(int index);
     Leaf<K,V> put(int index, K k, V v);
     
+    default void remove(final int index) {
+        final int shiftIndex = index + 1;
+        if(shiftIndex < size()) {
+            shiftLeft(shiftIndex, 1);
+        }
+        
+        sizeDown(1);
+    }
+
     default void removeMin() {
-        shiftLeft(1, 1).sizeDown(1);
+        remove(0);
     }
 
     default void removeMax() {
-        sizeDown(1);
+        remove(size() - 1);
     }
 
     default int getMinLimit() {

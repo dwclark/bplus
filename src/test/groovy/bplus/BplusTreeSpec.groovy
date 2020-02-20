@@ -106,17 +106,20 @@ class BplusTreeSpec extends Specification {
         oa.root.keys() == [5, 501, 1001, 1005 ]
     }
 
-    def "test add random"() {
+    @Ignore
+    def "test add/remove random"() {
         setup:
         10.times {
-            def max = 4_096
+            def max = 128
             def list = new ArrayList(max)
             (0..<max).each { list.add(it) }
             Collections.shuffle(list)
-            def branchOrder = ThreadLocalRandom.current().nextInt(6,12)
-            def leafOrder = ThreadLocalRandom.current().nextInt(6,12)
+            def removalList = new ArrayList(list)
+            Collections.shuffle(removalList)
+            def branchOrder = 4 //ThreadLocalRandom.current().nextInt(6,12)
+            def leafOrder = 4 //ThreadLocalRandom.current().nextInt(6,12)
 
-            def toAdd, index, keyList, sortedKeyList, nodeKeyList, sortedNodeKeyList;
+            def toAdd, toRemove, index, keyList, sortedKeyList, nodeKeyList, sortedNodeKeyList;
             try {
                 def oa = new ObjectArray(Integer, Integer, branchOrder, leafOrder)
                 def btree = new BplusTree(oa)
@@ -144,15 +147,43 @@ class BplusTreeSpec extends Specification {
                         throw new RuntimeException('node key list no longer sorted')
                     }
                 }
+
+                toAdd = null
+
+                removalList.eachWithIndex { num, i ->
+                    toRemove = num
+                    index = i
+                    
+                    btree.remove(toRemove);
+                    nodeKeyList = btree.nodeKeyList()
+                    sortedNodeKeyList = new ArrayList(nodeKeyList)
+                    sortedNodeKeyList.sort()
+                    keyList = btree.keyList()
+                    sortedKeyList = new ArrayList(keyList)
+                    sortedKeyList.sort()
+                    
+                    if((nodeKeyList as Set).size() != nodeKeyList.size()) {
+                        throw new RuntimeException("[removal] duplicates in keylist");
+                    }
+                    
+                    if(keyList != sortedKeyList) {
+                        throw new RuntimeException("[removal] list no longer sorted")
+                    }
+                    
+                    if(nodeKeyList != sortedNodeKeyList) {
+                        throw new RuntimeException('[removal] node key list no longer sorted')
+                    }
+                }
             }
             catch(Exception e) {
                 println "branchOrder: ${branchOrder}, leafOrder ${leafOrder}"
-                println "adding ${toAdd} at index ${index}"
+                println "adding ${toAdd} removing ${toRemove}"
                 println "nodeKeyList:       ${nodeKeyList}"
                 println "sortedNodeKeyList: ${sortedNodeKeyList}"
                 println "keyList:       ${keyList}"
                 println "sortedKeyList: ${sortedKeyList}"
                 println "all: ${list}"
+                println "removal list: ${removalList}"
                 throw e
             }
         }
@@ -346,7 +377,151 @@ class BplusTreeSpec extends Specification {
 
         then:
         upperLeft.size() == 2
-        
     }
 
+    def "test full left leaf removal"() {
+        setup:
+        def num
+        def btree
+        
+        try {
+            def oa = new ObjectArray(Integer, Integer, 4)
+            btree = new BplusTree(oa)
+            (1..1000).each { btree.put(it, it) }
+
+            (1..1000).each {
+                num = it
+
+                def nkl = btree.nodeKeyList()
+                def sorted = new ArrayList(nkl)
+                sorted.sort()
+                if(nkl != sorted) {
+                    throw new RuntimeException("node key list no longer sorted")
+                }
+                
+                btree.remove(it)
+                btree.nodeKeyList()
+            }
+        }
+        catch(Exception e) {
+            println "Error when trying to remove ${num}"
+            println "Node Key List: ${btree.nodeKeyList()}"
+            println "Key List: ${btree.keyList()}"
+            throw e
+        }
+    }
+
+    def "test full right leaf removal"() {
+        setup:
+        def num
+        def btree
+        
+        try {
+            def oa = new ObjectArray(Integer, Integer, 4)
+            btree = new BplusTree(oa)
+            (1..1000).each { btree.put(it, it) }
+
+            (1000..1).each {
+                num = it
+
+                if(num == 20) {
+                    println 20
+                }
+                
+                def nkl = btree.nodeKeyList()
+                def sorted = new ArrayList(nkl)
+                sorted.sort()
+                if(nkl != sorted) {
+                    throw new RuntimeException("node key list no longer sorted")
+                }
+                
+                btree.remove(it)
+                btree.nodeKeyList()
+            }
+        }
+        catch(Exception e) {
+            println "Error when trying to remove ${num}"
+            println "Node Key List: ${btree.nodeKeyList()}"
+            println "Key List: ${btree.keyList()}"
+            throw e
+        }
+    }
+
+    def "test specify add/remove pattern"() {
+        setup:
+        def list = [49, 20, 68, 67, 89, 58, 93, 1, 107, 66, 57, 76, 38, 65, 25, 28, 100, 45, 12, 54, 23, 104, 115, 15, 101, 70, 36, 78, 10, 21, 82, 0, 117, 77, 80, 22, 9, 42, 44, 7, 85, 35, 96, 2, 55, 123, 37, 40, 6, 69, 95, 50, 103, 8, 31, 125, 53, 81, 121, 110, 91, 79, 4, 61, 74, 59, 39, 14, 73, 98, 94, 30, 109, 3, 71, 43, 126, 102, 97, 120, 112, 56, 83, 118, 90, 72, 18, 32, 99, 106, 46, 124, 47, 86, 114, 27, 62, 88, 26, 87, 29, 105, 122, 11, 116, 24, 92, 60, 33, 52, 119, 17, 127, 113, 64, 51, 84, 19, 75, 108, 16, 48, 111, 5, 13, 63, 34, 41]
+        def removalList = [46, 20, 103, 105, 42, 74, 2, 114, 49, 5, 48, 127, 9, 40, 18, 33, 122, 14, 15, 6, 95, 51, 43, 56, 70, 68, 109, 24, 121, 101, 92, 115, 69, 94, 98, 123, 90, 62, 124, 47, 32, 63, 87, 107, 21, 108, 31, 85, 54, 73, 45, 22, 38, 8, 52, 117, 119, 17, 1, 81, 19, 113, 65, 53, 79, 35, 44, 26, 30, 55, 110, 34, 13, 37, 97, 25, 75, 96, 77, 118, 82, 99, 10, 0, 29, 71, 36, 126, 67, 120, 61, 106, 72, 64, 89, 111, 58, 112, 60, 66, 76, 7, 93, 27, 12, 3, 83, 50, 16, 91, 59, 84, 104, 102, 88, 41, 80, 78, 39, 57, 23, 100, 125, 11, 116, 28, 86, 4]
+
+        def oa = new ObjectArray(Integer,Integer,4)
+        def btree = new BplusTree(oa)
+
+        def toAdd, toRemove, index, keyList, sortedKeyList, nodeKeyList, sortedNodeKeyList;
+        try {
+            list.eachWithIndex { num, i ->
+                toAdd = num
+                index = i
+                
+                btree.put(toAdd, toAdd)
+                nodeKeyList = btree.nodeKeyList()
+                sortedNodeKeyList = new ArrayList(nodeKeyList)
+                sortedNodeKeyList.sort()
+                keyList = btree.keyList()
+                sortedKeyList = new ArrayList(keyList)
+                sortedKeyList.sort()
+                
+                if((nodeKeyList as Set).size() != nodeKeyList.size()) {
+                    throw new RuntimeException("duplicates in keylist");
+                }
+                
+                if(keyList != sortedKeyList) {
+                    throw new RuntimeException("list no longer sorted")
+                }
+                
+                if(nodeKeyList != sortedNodeKeyList) {
+                    throw new RuntimeException('node key list no longer sorted')
+                }
+            }
+            
+            toAdd = null
+            
+            removalList.eachWithIndex { num, i ->
+                toRemove = num
+                index = i
+
+                if(toRemove == 124) {
+                    println 124
+                }
+                
+                btree.remove(toRemove);
+                nodeKeyList = btree.nodeKeyList()
+                sortedNodeKeyList = new ArrayList(nodeKeyList)
+                sortedNodeKeyList.sort()
+                keyList = btree.keyList()
+                sortedKeyList = new ArrayList(keyList)
+                sortedKeyList.sort()
+                
+                if((nodeKeyList as Set).size() != nodeKeyList.size()) {
+                    throw new RuntimeException("[removal] duplicates in keylist");
+                }
+                
+                if(keyList != sortedKeyList) {
+                    throw new RuntimeException("[removal] list no longer sorted")
+                }
+                
+                if(nodeKeyList != sortedNodeKeyList) {
+                    throw new RuntimeException('[removal] node key list no longer sorted')
+                }
+            }
+        }
+        catch(Exception e) {
+            println "adding ${toAdd} removing ${toRemove}"
+            println "nodeKeyList:       ${nodeKeyList}"
+            println "sortedNodeKeyList: ${sortedNodeKeyList}"
+            println "keyList:       ${keyList}"
+            println "sortedKeyList: ${sortedKeyList}"
+            println "all: ${list}"
+            println "removal list: ${removalList}"
+            throw e
+        }
+    }
 }
