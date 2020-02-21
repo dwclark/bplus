@@ -80,8 +80,9 @@ class Traversal<K extends Comparable<K>,V> {
         Node<K,V> current = root;
         while(!current.isLeaf()) {
             final Branch<K,V> branch = current.asBranch();
-            final int navIndex = navigateIndex(branch.search(k));
-            current = next().setNode(current).setIndex(navIndex).getNode();
+            final int navIndex = branch.navigateIndex(k);
+            next().setNode(current).setIndex(navIndex).getNode();
+            current = branch.child(navIndex);
         }
 
         next().setNode(current).setIndex(0);
@@ -184,14 +185,5 @@ class Traversal<K extends Comparable<K>,V> {
             all.add(entry);
             return entry;
         }
-    }
-
-    private static int navigateIndex(final int index) {
-        if(index >= 0) {
-            return index;
-        }
-        
-        final int retIndex = Node.insertIndex(index);
-        return (retIndex == 0) ? retIndex : retIndex - 1;
     }
 }

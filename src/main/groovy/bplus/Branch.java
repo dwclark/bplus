@@ -81,4 +81,19 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
         sizeDown(0);
             
     }
+
+    default int navigateIndex(final K k) {
+        final int searchIndex = search(k);
+        if(searchIndex >= 0) {
+            return searchIndex;
+        }
+
+        final int _index = Node.insertIndex(searchIndex);
+        if(_index == 0) {
+            return _index;
+        }
+        else {
+            return _index - 1;
+        }
+    }
 }

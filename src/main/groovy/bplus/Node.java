@@ -107,7 +107,7 @@ public interface Node<K extends Comparable<K>,V> {
         return index >= 0;
     }
 
-    static int insertIndex(final int index) {
-        return -(index + 1);
+    static int insertIndex(final int searchIndex) {
+        return -(searchIndex + 1);
     }
 }

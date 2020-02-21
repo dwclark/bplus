@@ -56,7 +56,7 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
         }
 
         public K key(final int index) { return keyType.cast(ary[keyIndex(index)]); }
-        protected int keyIndex(final int index) { return index >>> 1; }
+        protected int keyIndex(final int index) { return index << 1; }
         protected int pairIndex(final int index) { return keyIndex(index) + 1; }
 
         protected Object[] sourceArray(final Node<K,V> node) {
@@ -72,7 +72,7 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
             final int srcIndex = keyIndex(argSrcPos);
             final int destIndex = keyIndex(argDestPos);
             final int length = argLength << 1;
-            System.arraycopy(sourceArray(argSrc.asBranch()), srcIndex, ary, destIndex, length);
+            System.arraycopy(sourceArray(argSrc), srcIndex, ary, destIndex, length);
         }
 
         public void resizeClear(final int newSize) {
@@ -120,8 +120,11 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
         protected _Leaf() { super(2 * leafOrder); }
 
         public Leaf<K,V> put(final int index, final K k, final V v) {
-            ary[keyIndex(index)] = k;
-            ary[pairIndex(index)] = v;
+            final int ki = keyIndex(index);
+            final int vi = pairIndex(index);
+                
+            ary[ki] = k;
+            ary[vi] = v;
             return this;
         }
 
