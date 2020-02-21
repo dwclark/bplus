@@ -4,6 +4,7 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
     Node<K,V> nullNode();
     Branch<K,V> put(int index, Node<K,V> child);
     Node<K,V> child(int index);
+    void resetKey(int indexx);
     
     default Branch<K,V> asBranch() {
         return this;

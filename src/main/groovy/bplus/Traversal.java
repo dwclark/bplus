@@ -20,7 +20,7 @@ class Traversal<K extends Comparable<K>,V> {
         public int getIndex() { return index; }
         public Node<T,U> getSibling() { return sibling; }
     }
-    
+
     public static class Entry<T extends Comparable<T>,U> {
         private Node<T,U> node = null;
         private int index = -1;
@@ -159,6 +159,18 @@ class Traversal<K extends Comparable<K>,V> {
             final Branch<K,V> uncle = grandparent.child(index + 1).asBranch();
             final Node<K,V> cousin = uncle.child(0);
             return new SiblingRelation<>(grandparent, index, cousin);
+        }
+    }
+
+    public void resetAncestorKeys() {
+        Entry<K,V> entry = getParent();
+        Branch<K,V> ancestor = entry.getNode().asBranch();
+        ancestor.resetKey(entry.getIndex());
+        
+        for(int i = (level() - 2); entry.getIndex() == 0 && i >= 0; --i) {
+            entry = all.get(i);
+            ancestor = entry.getNode().asBranch();
+            ancestor.resetKey(entry.getIndex());
         }
     }
 

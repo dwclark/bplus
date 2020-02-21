@@ -91,6 +91,10 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
             return this;
         }
 
+        public void resetKey(int index) {
+            ary[keyIndex(index)] = child(index).key(0);
+        }
+
         public int order() { return branchOrder; }
 
         public Node<K,V> nullNode() {
