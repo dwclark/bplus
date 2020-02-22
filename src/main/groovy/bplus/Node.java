@@ -16,14 +16,13 @@ public interface Node<K extends Comparable<K>,V> {
     Node<K,V> copy(int srcPos, Node<K,V> src, int pos, int length);
     Branch<K,V> newBranch();
     Leaf<K,V> newLeaf();
-    K getMinKey();
+
+    default int lastIndex() {
+        return size() - 1;
+    }
     
     default boolean isLeaf() {
         return !isBranch();
-    }
-
-    default boolean isEvenSized() {
-        return (size() & 1) == 0;
     }
 
     default boolean isEvenOrdered() {
@@ -42,10 +41,6 @@ public interface Node<K extends Comparable<K>,V> {
         return size() < getMinLimit();
     }
 
-    default boolean isAtMinLimit() {
-        return size() == getMinLimit();
-    }
-
     default boolean isAboveMinLimit() {
         return size() > getMinLimit();
     }
@@ -56,7 +51,7 @@ public interface Node<K extends Comparable<K>,V> {
 
     default int search(final K lookFor) {
         int low = 0;
-        int high = size() - 1;
+        int high = lastIndex();
 
         while(low <= high) {
             int mid = (low + high) >>> 1;
@@ -101,10 +96,6 @@ public interface Node<K extends Comparable<K>,V> {
     
     default Node<K,V> shiftRight(int at, int by) {
         return copy(at, at + by, size() - (at + by));
-    }
-
-    static boolean found(final int index) {
-        return index >= 0;
     }
 
     static int insertIndex(final int searchIndex) {

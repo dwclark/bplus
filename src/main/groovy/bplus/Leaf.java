@@ -19,28 +19,12 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
         sizeDown(1);
     }
 
-    default void removeMin() {
-        remove(0);
+    default K lastKey() {
+        return key(lastIndex());
     }
 
-    default void removeMax() {
-        remove(size() - 1);
-    }
-
-    default K getMinKey() {
-        return key(0);
-    }
-
-    default K getMaxKey() {
-        return key(size() - 1);
-    }
-    
-    default V getMinValue() {
-        return value(0);
-    }
-
-    default V getMaxValue() {
-        return value(size() - 1);
+    default V lastValue() {
+        return value(lastIndex());
     }
     
     default Branch<K,V> asBranch() {
@@ -105,18 +89,6 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
 
         return newRight;
     }
-    
-    default V delete(final K k) {
-        final int index = search(k);
-        if(index < 0) {
-            return null;
-        }
-
-        final V v = value(index);
-        shiftLeft(index, 1).sizeDown(1);
-        return v;
-    }
-
     
     default boolean isBranch() {
         return false;

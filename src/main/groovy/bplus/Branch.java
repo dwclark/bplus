@@ -30,7 +30,7 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
             throw new RuntimeException("branch is full");
         }
         
-        final K nodeMinKey = node.getMinKey();
+        final K nodeMinKey = node.key(0);
         final int searchPoint = search(nodeMinKey);
 
         if(searchPoint >= 0) {
@@ -46,7 +46,7 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
     }
 
     default Branch<K,V> split(final Node<K,V> node) {
-        final int searchPoint = search(node.getMinKey());
+        final int searchPoint = search(node.key(0));
         if(searchPoint >= 0) {
             throw new RuntimeException("duplicate key violation");
         }
@@ -77,10 +77,6 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
         return newRight;
     }
     
-    default K getMinKey() {
-        return key(0);
-    }
-
     default void remove(final int index) {
         if(index + 1 < size()) {
             shiftLeft(index + 1, 1);

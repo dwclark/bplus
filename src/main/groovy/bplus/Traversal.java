@@ -171,7 +171,7 @@ class Traversal<K extends Comparable<K>,V> {
             final int grandparentNavIndex = tmpEntry.index - 1;
             final TEntry grandparentEntry = new TEntry().setNode(grandparent).setIndex(grandparentNavIndex);
             final Branch<K,V> uncle = grandparent.child(grandparentNavIndex).asBranch();
-            final int uncleNavIndex = uncle.size() - 1;
+            final int uncleNavIndex = uncle.lastIndex();
             final TEntry uncleEntry = new TEntry().setNode(uncle).setIndex(uncleNavIndex);
             final Node<K,V> cousin = uncle.child(uncleNavIndex);
             return new AdoptedFamily(grandparentEntry, uncleEntry, cousin);

@@ -86,7 +86,7 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
         protected _Branch() { super(2 * branchOrder); }
 
         public Branch<K,V> put(final int index, final Node<K,V> child) {
-            ary[keyIndex(index)] = child.getMinKey();
+            ary[keyIndex(index)] = child.key(0);
             ary[pairIndex(index)] = child;
             return this;
         }

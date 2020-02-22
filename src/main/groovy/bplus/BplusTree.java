@@ -1,6 +1,5 @@
 package bplus;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -112,7 +111,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
         if(leftRel != null && !leftRel.getSibling().isFull()) {
             final Leaf<K,V> sibling = leftRel.getSibling().asLeaf();
             sibling.sizeUp(1);
-            sibling.put(sibling.size() - 1, leaf.key(0), leaf.value(0));
+            sibling.put(sibling.lastIndex(), leaf.key(0), leaf.value(0));
             leaf.shiftLeft(1, 1).sizeDown(1);
             leaf.insert(k, v);
             traversal.resetAncestorKeys();
@@ -131,7 +130,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
                 sibling.put(0, k, v);
             }
             else {
-                sibling.put(0, leaf.getMaxKey(), leaf.getMaxValue());
+                sibling.put(0, leaf.lastKey(), leaf.lastValue());
                 leaf.sizeDown(1);
                 if(leaf.insert(k, v) == 0) {
                     traversal.resetAncestorKeys();
@@ -168,7 +167,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
         if(leftRel != null && !leftRel.getSibling().isFull()) {
             final Branch<K,V> sibling = leftRel.getSibling().asBranch();
             sibling.sizeUp(1);
-            sibling.put(sibling.size() - 1, current.child(0));
+            sibling.put(sibling.lastIndex(), current.child(0));
             current.shiftLeft(1, 1).sizeDown(1);
             current.insert(orphan);
             traversal.resetAncestorKeys();
@@ -180,13 +179,13 @@ public class BplusTree<K extends Comparable<K>,V>  {
         if(rightRel != null && !rightRel.getSibling().isFull()) {
             final Branch<K,V> sibling = rightRel.getSibling().asBranch();
             sibling.sizeUp(1).shiftRight(0, 1);
-            final int searchIndex = current.search(orphan.getMinKey());
+            final int searchIndex = current.search(orphan.key(0));
             final int insertIndex = searchIndex >= 0 ? searchIndex : Node.insertIndex(searchIndex);
             if(insertIndex == current.size()) {
                 sibling.put(0, orphan);
             }
             else {
-                sibling.put(0, current.child(current.size() - 1));
+                sibling.put(0, current.child(current.lastIndex()));
                 current.sizeDown(1);
                 if(current.insert(orphan) == 0) {
                     traversal.resetAncestorKeys();
@@ -222,7 +221,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
             final Leaf<K,V> sibling = leftRel.getSibling().asLeaf();
             if(sibling.isAboveMinLimit()) {
                 //case: borrow something from left sibling
-                final int lastIndex = sibling.size() - 1;
+                final int lastIndex = sibling.lastIndex();
                 current.sizeUp(1);
                 current.shiftRight(0, 1);
                 current.put(0, sibling.key(lastIndex), sibling.value(lastIndex));
@@ -288,7 +287,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
                 //case: borrow from the left
                 current.sizeUp(1);
                 current.shiftRight(0, 1);
-                current.put(0, sibling.child(sibling.size() - 1));
+                current.put(0, sibling.child(sibling.lastIndex()));
                 sibling.sizeDown(1);
                 traversal.resetAncestorKeys();
             }
