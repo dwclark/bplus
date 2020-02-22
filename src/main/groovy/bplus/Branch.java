@@ -74,13 +74,12 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
         return key(0);
     }
 
-    default void delete(final int index) {
+    default void remove(final int index) {
         if(index + 1 < size()) {
             shiftLeft(index + 1, 1);
         }
 
         sizeDown(0);
-            
     }
 
     default int navigateIndex(final K k) {
