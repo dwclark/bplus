@@ -189,6 +189,7 @@ class BplusTreeSpec extends Specification {
                     index = i
                     
                     btree.put(toAdd, toAdd)
+                    assert btree.get(toAdd) == toAdd
                     btree.assertValidKeys()
                     btree.assertOrders()
                     keyList = btree.keyList()
