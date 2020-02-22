@@ -83,19 +83,24 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
         if(!isFull()) {
             throw new RuntimeException("leaf is not full");
         }
-        
-        final int leftSize = size() >>> 1;
+
         final int index = insertIndex(searchPoint);
         final Leaf<K,V> newRight = newLeaf();
-        final int rightSize = size() - leftSize;
-        newRight.copy(leftSize, this, 0, rightSize).size(rightSize);
-        size(leftSize);
+        final int totalElements = size() + 1;
+        final int leftSize = totalElements >>> 1; //+1 to include new element
+        final int rightSize = totalElements - leftSize;
 
-        if(index <= leftSize) {
+        if(index < leftSize) {
+            newRight.size(rightSize);
+            newRight.copy(leftSize - 1, this, 0, rightSize);
+            size(leftSize - 1);
             insert(k, v);
         }
         else {
+            newRight.size(rightSize - 1);
+            newRight.copy(leftSize, this, 0, rightSize - 1);
             newRight.insert(k, v);
+            size(leftSize);
         }
 
         return newRight;

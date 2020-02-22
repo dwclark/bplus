@@ -84,7 +84,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
                 }
             }
 
-            if(root.isBranch() && root.size() == 0) {
+            if(root.isBranch() && root.size() == 1) {
                 traversal.addDone(root);
                 store.setRoot(root.asBranch().child(0));
             }
@@ -317,7 +317,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
                 //case: borrow from the right
                 final int insertIndex = current.size();
                 current.sizeUp(1);
-                current.put(insertIndex, sibling.child(sibling.size() - 1));
+                current.put(insertIndex, sibling.child(0));
                 sibling.shiftLeft(1, 1);
                 sibling.sizeDown(1);
                 rightRel.resetAncestorKeys();
@@ -341,14 +341,54 @@ public class BplusTree<K extends Comparable<K>,V>  {
         }
     }
 
-    public void assertValidKeys() {
+    public boolean assertOrders() {
+        final Node<K,V> root = store.getRoot();
+        if(root.isLeaf()) {
+            return true;
+        }
+
+        final Branch<K,V> branch = root.asBranch();
+        for(int i = 0; i < branch.size(); ++i) {
+            assertOrders(branch.child(i));
+        }
+
+        return true;
+    }
+
+    private void assertOrders(final Node<K,V> node) {
+        if(node.isLeaf()) {
+            if(node.isBelowLimit()) {
+                final String s = String.format("leaf with min value %s is below min %d",
+                                               node.key(0), node.getMinLimit());
+                throw new RuntimeException(s);
+            }
+
+            return;
+        }
+
+        final Branch<K,V> branch = node.asBranch();
+        
+        if(branch.isBelowLimit()) {
+            String msg = String.format("branch with min key %s is below min %d",
+                                       branch.key(0), branch.getMinLimit());
+            throw new RuntimeException(msg);
+        }
+
+        for(int i = 0; i < branch.size(); ++i) {
+            assertOrders(branch.child(i));
+        }
+    }
+
+    public boolean assertValidKeys() {
         Node<K,V> root = store.getRoot();
         if(root.isLeaf()) {
-            return;
+            return true;
         }
         else {
             assertValidKeys(root.asBranch());
         }
+
+        return true;
     }
 
     private void assertValidKeys(final Branch<K,V> branch) {

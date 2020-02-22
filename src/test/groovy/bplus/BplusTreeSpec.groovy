@@ -145,10 +145,6 @@ class BplusTreeSpec extends Specification {
                 toAdd = num
                 index = i
 
-                if(toAdd == 32) {
-                    println 32
-                }
-
                 btree.put(toAdd, toAdd)
                 keyList = btree.keyList()
                 sortedKeyList = new ArrayList(keyList)
@@ -175,7 +171,7 @@ class BplusTreeSpec extends Specification {
     def "test add/remove random"() {
         setup:
         10.times {
-            def max = 2048
+            def max = 4096
             def list = new ArrayList(max)
             (0..<max).each { list.add(it) }
             Collections.shuffle(list)
@@ -193,6 +189,8 @@ class BplusTreeSpec extends Specification {
                     index = i
                     
                     btree.put(toAdd, toAdd)
+                    btree.assertValidKeys()
+                    btree.assertOrders()
                     keyList = btree.keyList()
                     sortedKeyList = new ArrayList(keyList)
                     sortedKeyList.sort()
@@ -206,36 +204,25 @@ class BplusTreeSpec extends Specification {
 
                 toAdd = null
                 
-                /*removalList.eachWithIndex { num, i ->
+                removalList.eachWithIndex { num, i ->
                     toRemove = num
                     index = i
                     
-                    btree.remove(toRemove);
-                    nodeKeyList = btree.nodeKeyList()
-                    sortedNodeKeyList = new ArrayList(nodeKeyList)
-                    sortedNodeKeyList.sort()
+                    btree.remove(toRemove)
+                    btree.assertValidKeys()
+                    btree.assertOrders()
                     keyList = btree.keyList()
                     sortedKeyList = new ArrayList(keyList)
                     sortedKeyList.sort()
                     
-                    if((nodeKeyList as Set).size() != nodeKeyList.size()) {
-                        throw new RuntimeException("[removal] duplicates in keylist");
-                    }
-                    
                     if(keyList != sortedKeyList) {
                         throw new RuntimeException("[removal] list no longer sorted")
                     }
-                    
-                    if(nodeKeyList != sortedNodeKeyList) {
-                        throw new RuntimeException('[removal] node key list no longer sorted')
-                    }
-                }*/
+                }
             }
             catch(Exception e) {
                 println "branchOrder: ${branchOrder}, leafOrder ${leafOrder}"
                 println "adding ${toAdd} removing ${toRemove}"
-                println "nodeKeyList:       ${nodeKeyList}"
-                println "sortedNodeKeyList: ${sortedNodeKeyList}"
                 println "keyList:       ${keyList}"
                 println "sortedKeyList: ${sortedKeyList}"
                 println "all: ${list}"
@@ -349,64 +336,64 @@ class BplusTreeSpec extends Specification {
         oa.root.keys() == [6,9,13,17]
     }
 
-    /*def "test left leaf sibling borrow and merge"() {
+    def "test left leaf sibling borrow and merge"() {
         setup:
-        def oa = new ObjectArray(Integer, Integer, 4)
+        def oa = new ObjectArray(Integer, Integer, 5, 4)
         def btree = new BplusTree(oa)
 
         when:
         (1..20).each { num -> btree.put(num, num) }
         
         then:
-        oa.root.keys() == [5,9,13,17]
-        oa.root.left(0).keys() == [1,2,3,4]
-        oa.root.left(1).keys() == [5,6,7,8]
-        oa.root.left(2).keys() == [9,10,11,12]
-        oa.root.left(3).keys() == [13,14,15,16]
-        oa.root.right(3).keys() == [17,18,19,20]
+        oa.root.keys() == [1, 5,9,13,17]
+        oa.root.child(0).keys() == [1,2,3,4]
+        oa.root.child(1).keys() == [5,6,7,8]
+        oa.root.child(2).keys() == [9,10,11,12]
+        oa.root.child(3).keys() == [13,14,15,16]
+        oa.root.child(4).keys() == [17,18,19,20]
 
         when:
         btree.remove(19)
 
         then:
-        oa.root.keys() == [5,9,13,17]
-        oa.root.right(3).keys() == [17,18,20]
+        oa.root.keys() == [1,5,9,13,17]
+        oa.root.child(4).keys() == [17,18,20]
 
         when:
         btree.remove(17)
 
         then:
-        oa.root.keys() == [5,9,13,18]
-        oa.root.right(3).keys() == [18,20]
+        oa.root.keys() == [1,5,9,13,18]
+        oa.root.child(4).keys() == [18,20]
 
         when:
         btree.remove(18)
 
         then:
-        oa.root.keys() == [5,9,13,16]
-        oa.root.left(3).keys() == [13,14,15]
-        oa.root.right(3).keys() == [16,20]
+        oa.root.keys() == [1,5,9,13,16]
+        oa.root.child(3).keys() == [13,14,15]
+        oa.root.child(4).keys() == [16,20]
 
         when:
         btree.remove(13)
         btree.remove(16)
 
         then:
-        oa.root.keys() == [5,9,14]
-        oa.root.right(2).keys() == [14,15,20]
-        oa.root.size() == 3
+        oa.root.keys() == [1,5,9,14]
+        oa.root.child(3).keys() == [14,15,20]
+        oa.root.size() == 4
     }
 
     def "test left leaf remove"() {
         setup:
-        def oa = new ObjectArray(Integer, Integer, 4)
+        def oa = new ObjectArray(Integer, Integer, 5, 4)
         def btree = new BplusTree(oa)
         
         when:
         (1..100).each { num -> btree.put(num, num) }
-        def upperLeft = oa.root.left(0);
-        def farLeft = upperLeft.left(0);
-        def nextLeft = upperLeft.right(0);
+        def upperLeft = oa.root.child(0);
+        def farLeft = upperLeft.child(0);
+        def nextLeft = upperLeft.child(1);
         
         then:
         farLeft.keys() == [1,2,3,4]
@@ -421,18 +408,19 @@ class BplusTreeSpec extends Specification {
 
         when:
         btree.remove(5)
-        farLeft = upperLeft.left(0)
+        farLeft = upperLeft.child(0)
         
         then:
-        upperLeft.size() == 3
+        upperLeft.size() == 4
         farLeft.keys() == [6,7,8]
-        upperLeft.keys() == [9,13,17]
+        upperLeft.keys() == [6,9,13,17]
 
         when:
         [6,7,8,9,10,11,12,13,14,15,16,17,18].each { btree.remove(it) }
 
         then:
-        upperLeft.size() == 2
+        btree.assertValidKeys();
+        upperLeft.size() == 3
     }
 
     def "test full left leaf removal"() {
@@ -447,22 +435,13 @@ class BplusTreeSpec extends Specification {
 
             (1..1000).each {
                 num = it
-
-                def nkl = btree.nodeKeyList()
-                def sorted = new ArrayList(nkl)
-                sorted.sort()
-                if(nkl != sorted) {
-                    throw new RuntimeException("node key list no longer sorted")
-                }
-                
                 btree.remove(it)
-                btree.nodeKeyList()
+                btree.assertValidKeys()
+                btree.assertOrders()
             }
         }
         catch(Exception e) {
             println "Error when trying to remove ${num}"
-            println "Node Key List: ${btree.nodeKeyList()}"
-            println "Key List: ${btree.keyList()}"
             throw e
         }
     }
@@ -480,105 +459,51 @@ class BplusTreeSpec extends Specification {
             (1000..1).each {
                 num = it
 
-                if(num == 20) {
-                    println 20
-                }
-                
-                def nkl = btree.nodeKeyList()
-                def sorted = new ArrayList(nkl)
-                sorted.sort()
-                if(nkl != sorted) {
-                    throw new RuntimeException("node key list no longer sorted")
-                }
-                
                 btree.remove(it)
-                btree.nodeKeyList()
+                btree.assertValidKeys()
+                btree.assertOrders()
             }
         }
         catch(Exception e) {
             println "Error when trying to remove ${num}"
-            println "Node Key List: ${btree.nodeKeyList()}"
-            println "Key List: ${btree.keyList()}"
             throw e
         }
     }
 
-    @Ignore
-    def "test specify add/remove pattern"() {
+    def "test specific branch order problem"() {
         setup:
-        def list = [49, 20, 68, 67, 89, 58, 93, 1, 107, 66, 57, 76, 38, 65, 25, 28, 100, 45, 12, 54, 23, 104, 115, 15, 101, 70, 36, 78, 10, 21, 82, 0, 117, 77, 80, 22, 9, 42, 44, 7, 85, 35, 96, 2, 55, 123, 37, 40, 6, 69, 95, 50, 103, 8, 31, 125, 53, 81, 121, 110, 91, 79, 4, 61, 74, 59, 39, 14, 73, 98, 94, 30, 109, 3, 71, 43, 126, 102, 97, 120, 112, 56, 83, 118, 90, 72, 18, 32, 99, 106, 46, 124, 47, 86, 114, 27, 62, 88, 26, 87, 29, 105, 122, 11, 116, 24, 92, 60, 33, 52, 119, 17, 127, 113, 64, 51, 84, 19, 75, 108, 16, 48, 111, 5, 13, 63, 34, 41]
-        def removalList = [46, 20, 103, 105, 42, 74, 2, 114, 49, 5, 48, 127, 9, 40, 18, 33, 122, 14, 15, 6, 95, 51, 43, 56, 70, 68, 109, 24, 121, 101, 92, 115, 69, 94, 98, 123, 90, 62, 124, 47, 32, 63, 87, 107, 21, 108, 31, 85, 54, 73, 45, 22, 38, 8, 52, 117, 119, 17, 1, 81, 19, 113, 65, 53, 79, 35, 44, 26, 30, 55, 110, 34, 13, 37, 97, 25, 75, 96, 77, 118, 82, 99, 10, 0, 29, 71, 36, 126, 67, 120, 61, 106, 72, 64, 89, 111, 58, 112, 60, 66, 76, 7, 93, 27, 12, 3, 83, 50, 16, 91, 59, 84, 104, 102, 88, 41, 80, 78, 39, 57, 23, 100, 125, 11, 116, 28, 86, 4]
+        def list = [81, 48, 68, 6, 59, 92, 183, 58, 206, 188, 182, 205, 147, 232, 104, 54, 33, 133, 162, 227, 169, 150, 132, 57, 154, 193, 105, 51, 142, 187, 236, 220, 241, 226, 216, 230, 161, 74, 15, 248, 224, 31, 61, 174, 113, 197, 234, 157, 237, 102, 185, 198, 121, 1, 96, 65, 17, 228, 233, 165, 11, 219, 247, 101, 118, 252, 127, 19, 67, 20, 95, 214, 3, 138, 78, 29, 190, 240, 170, 99, 100, 254, 75, 85, 28, 32, 246, 223, 125, 128, 23, 70, 195, 222, 167, 56, 194, 124, 156, 229, 27, 171, 130, 129, 93, 140, 72, 112, 41, 122, 238, 215, 217, 110, 64, 163, 35, 62, 136, 7, 88, 210, 60, 12, 143, 200, 24, 177, 243, 189, 158, 90, 211, 175, 10, 201, 131, 135, 39, 250, 115, 86, 2, 97, 212, 245, 30, 82, 38, 120, 106, 16, 103, 42, 53, 191, 235, 25, 151, 159, 148, 242, 21, 164, 14, 87, 166, 73, 225, 9, 91, 34, 111, 244, 98, 71, 192, 52, 155, 77, 152, 43, 49, 253, 196, 40, 36, 45, 66, 83, 181, 108, 209, 144, 94, 26, 116, 168, 145, 139, 141, 199, 251, 126, 22, 76, 204, 79, 203, 117, 50, 153, 4, 137, 172, 207, 13, 80, 0, 63, 179, 8, 178, 208, 47, 37, 249, 46, 119, 160, 186, 55, 176, 44, 18, 149, 218, 213, 255, 114, 69, 221, 107, 184, 146, 123, 231, 180, 89, 5, 109, 134, 202, 239, 173, 84]
 
-        def oa = new ObjectArray(Integer,Integer,4)
-        def btree = new BplusTree(oa)
-
-        def toAdd, toRemove, index, keyList, sortedKeyList, nodeKeyList, sortedNodeKeyList;
+        def branchOrder = 5
+        def leafOrder = 4
+        
+        def toAdd, toRemove, index, keyList, sortedKeyList
         try {
+            def oa = new ObjectArray(Integer, Integer, branchOrder, leafOrder)
+            def btree = new BplusTree(oa)
             list.eachWithIndex { num, i ->
                 toAdd = num
                 index = i
                 
                 btree.put(toAdd, toAdd)
-                nodeKeyList = btree.nodeKeyList()
-                sortedNodeKeyList = new ArrayList(nodeKeyList)
-                sortedNodeKeyList.sort()
+                btree.assertValidKeys()
+                btree.assertOrders()
                 keyList = btree.keyList()
                 sortedKeyList = new ArrayList(keyList)
                 sortedKeyList.sort()
-                
-                if((nodeKeyList as Set).size() != nodeKeyList.size()) {
-                    throw new RuntimeException("duplicates in keylist");
-                }
                 
                 if(keyList != sortedKeyList) {
                     throw new RuntimeException("list no longer sorted")
                 }
-                
-                if(nodeKeyList != sortedNodeKeyList) {
-                    throw new RuntimeException('node key list no longer sorted')
-                }
-            }
-            
-            toAdd = null
-            
-            removalList.eachWithIndex { num, i ->
-                toRemove = num
-                index = i
-
-                if(toRemove == 124) {
-                    println 124
-                }
-                
-                btree.remove(toRemove);
-                nodeKeyList = btree.nodeKeyList()
-                sortedNodeKeyList = new ArrayList(nodeKeyList)
-                sortedNodeKeyList.sort()
-                keyList = btree.keyList()
-                sortedKeyList = new ArrayList(keyList)
-                sortedKeyList.sort()
-                
-                if((nodeKeyList as Set).size() != nodeKeyList.size()) {
-                    throw new RuntimeException("[removal] duplicates in keylist");
-                }
-                
-                if(keyList != sortedKeyList) {
-                    throw new RuntimeException("[removal] list no longer sorted")
-                }
-                
-                if(nodeKeyList != sortedNodeKeyList) {
-                    throw new RuntimeException('[removal] node key list no longer sorted')
-                }
             }
         }
         catch(Exception e) {
+            println "branchOrder: ${branchOrder}, leafOrder ${leafOrder}"
             println "adding ${toAdd} removing ${toRemove}"
-            println "nodeKeyList:       ${nodeKeyList}"
-            println "sortedNodeKeyList: ${sortedNodeKeyList}"
             println "keyList:       ${keyList}"
             println "sortedKeyList: ${sortedKeyList}"
             println "all: ${list}"
-            println "removal list: ${removalList}"
             throw e
         }
-    }*/
+    }
 }

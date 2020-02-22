@@ -1,5 +1,7 @@
 package bplus;
 
+import static bplus.Node.insertIndex;
+
 public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
     Node<K,V> nullNode();
     Branch<K,V> put(int index, Node<K,V> child);
@@ -35,7 +37,7 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
             throw new RuntimeException("duplicate key violation");
         }
 
-        final int index = Node.insertIndex(searchPoint);
+        final int index = insertIndex(searchPoint);
         final int currentSize = size();
         sizeUp(1);
         shiftRight(index, 1);
@@ -53,18 +55,23 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
             throw new RuntimeException("branch is not full");
         }
 
-        final int leftSize = size() >>> 1;
         final int index = Node.insertIndex(searchPoint);
         final Branch<K,V> newRight = newBranch();
-        final int rightSize = size() - leftSize;
-        newRight.copy(leftSize, this, 0, rightSize).size(rightSize);
-        size(leftSize);
+        final int totalElements = size() + 1;
+        final int leftSize = (totalElements) >>> 1; //+1 to include new element
+        final int rightSize = totalElements - leftSize;
 
-        if(index <= leftSize) {
+        if(index < leftSize) {
+            newRight.size(rightSize);
+            newRight.copy(leftSize - 1, this, 0, rightSize);
+            size(leftSize - 1);
             insert(node);
         }
         else {
+            newRight.size(rightSize - 1);
+            newRight.copy(leftSize, this, 0, rightSize - 1);
             newRight.insert(node);
+            size(leftSize);
         }
 
         return newRight;

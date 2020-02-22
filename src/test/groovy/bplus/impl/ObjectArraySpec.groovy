@@ -130,7 +130,7 @@ class ObjectArraySpec extends Specification {
         leaf.values() == [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     }
 
-    def 'test leaf split'() {
+    def 'test leaf split even'() {
         setup:
         def oa = new ObjectArray(Integer, Integer, 4)
         def make = this.&makeLeaf.curry(oa)
@@ -150,20 +150,49 @@ class ObjectArraySpec extends Specification {
         right = leaf.split(3,3)
 
         then:
-        leaf.size() == 3
-        right.size() == 2
-        leaf.keys() == [1,2,3]
-        right.keys() == [4,5]
+        leaf.size() == 2
+        right.size() == 3
+        leaf.keys() == [1,2]
+        right.keys() == [3,4,5]
 
         when:
         leaf = make([2,3,4,5])
         right = leaf.split(1,1)
 
         then:
-        leaf.size() == 3
-        right.size() == 2
-        leaf.keys() == [1,2,3]
-        right.keys() == [4,5]
+        leaf.size() == 2
+        right.size() == 3
+        leaf.keys() == [1,2]
+        right.keys() == [3,4,5]
+    }
+
+    def 'test leaf split odd'() {
+        def oa = new ObjectArray(Integer, Integer, 5)
+        def make = this.&makeLeaf.curry(oa)
+        
+        when:
+        def leaf = make([2,4,6,8,10])
+        def right = leaf.split(12, 12)
+
+        then:
+        leaf.keys() == [2,4,6]
+        right.keys() == [8,10,12]
+
+        when:
+        leaf = make([2,4,6,8,10])
+        right = leaf.split(5,5)
+
+        then:
+        leaf.keys() == [2,4,5]
+        right.keys() == [6,8,10]
+
+        when:
+        leaf = make([2,4,6,8,10])
+        right = leaf.split(7,7)
+
+        then:
+        leaf.keys() == [2,4,6]
+        right.keys() == [7,8,10]
     }
 
     def 'test branch copy'() {
