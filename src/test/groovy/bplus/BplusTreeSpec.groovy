@@ -245,7 +245,7 @@ class BplusTreeSpec extends Specification {
         }
     }
     
-    /*def "test height"() {
+    def "test height"() {
         setup:
         def max = 4_096
         def list = new ArrayList(max)
@@ -297,59 +297,59 @@ class BplusTreeSpec extends Specification {
 
     def "test right leaf sibling borrow and merge"() {
         setup:
-        def oa = new ObjectArray(Integer, Integer, 4)
+        def oa = new ObjectArray(Integer, Integer, 5, 4)
         def btree = new BplusTree(oa)
-
+        
         when:
         (1..20).each { num -> btree.put(num, num) }
 
         then:
-        oa.root.keys() == [5,9,13,17]
-        oa.root.left(0).keys() == [1,2,3,4]
-        oa.root.left(1).keys() == [5,6,7,8]
-        oa.root.left(2).keys() == [9,10,11,12]
-        oa.root.left(3).keys() == [13,14,15,16]
-        oa.root.right(3).keys() == [17,18,19,20]
+        oa.root.keys() == [1,5,9,13,17]
+        oa.root.child(0).keys() == [1,2,3,4]
+        oa.root.child(1).keys() == [5,6,7,8]
+        oa.root.child(2).keys() == [9,10,11,12]
+        oa.root.child(3).keys() == [13,14,15,16]
+        oa.root.child(4).keys() == [17,18,19,20]
 
         when:
         btree.remove(1);
 
         then:
-        oa.root.keys() == [5,9,13,17]
-        oa.root.left(0).keys() == [2,3,4]
-
+        oa.root.keys() == [2,5,9,13,17]
+        oa.root.child(0).keys() == [2,3,4]
+        
         when:
         btree.remove(2)
 
         then:
-        oa.root.keys() == [5,9,13,17]
-        oa.root.left(0).keys() == [3,4]
+        oa.root.keys() == [3,5,9,13,17]
+        oa.root.child(0).keys() == [3,4]
 
         when:
         btree.remove(4)
 
         then:
-        oa.root.left(0).keys() == [3,5]
-        oa.root.left(1).keys() == [6,7,8]
-        oa.root.keys() == [6,9,13,17]
+        oa.root.child(0).keys() == [3,5]
+        oa.root.child(1).keys() == [6,7,8]
+        oa.root.keys() == [3,6,9,13,17]
 
         when:
         btree.remove(5)
 
         then:
-        oa.root.left(0).keys() == [3,6]
-        oa.root.left(1).keys() == [7,8]
-        oa.root.keys() == [7,9,13,17]
+        oa.root.child(0).keys() == [3,6]
+        oa.root.child(1).keys() == [7,8]
+        oa.root.keys() == [3,7,9,13,17]
 
         when:
         btree.remove(3)
 
         then:
-        oa.root.left(0).keys() == [6,7,8]
-        oa.root.keys() == [9,13,17]
+        oa.root.child(0).keys() == [6,7,8]
+        oa.root.keys() == [6,9,13,17]
     }
 
-    def "test left leaf sibling borrow and merge"() {
+    /*def "test left leaf sibling borrow and merge"() {
         setup:
         def oa = new ObjectArray(Integer, Integer, 4)
         def btree = new BplusTree(oa)

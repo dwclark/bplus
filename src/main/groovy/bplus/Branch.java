@@ -79,7 +79,7 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
             shiftLeft(index + 1, 1);
         }
 
-        sizeDown(0);
+        sizeDown(1);
     }
 
     default int navigateIndex(final K k) {
