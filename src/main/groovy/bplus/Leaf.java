@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.AbstractMap.SimpleImmutableEntry;
 import static bplus.Node.insertIndex;
 
 public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
@@ -25,6 +26,10 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
 
     default V lastValue() {
         return value(lastIndex());
+    }
+
+    default Map.Entry<K,V> entry(final int index) {
+        return new SimpleImmutableEntry<>(key(index), value(index));
     }
     
     default Branch<K,V> asBranch() {

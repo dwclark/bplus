@@ -5,6 +5,98 @@ import java.util.ArrayList;
 
 class Traversal<K extends Comparable<K>,V> {
 
+    interface Traverser<T extends Comparable<T>, U> {
+        Leaf<T,U> getLeaf();
+        int getIndex();
+        boolean hasNext();
+        void next();
+        boolean hasPrevious();
+        void previous();
+    }
+
+    private int initialIndex(final Node<K,V> node) {
+        return node.isBranch() ? 0 : -1;
+    }
+    
+    public Traverser<K,V> leftTraverser(final Node<K,V> root) {
+        nextEntry().setNode(root).setIndex(initialIndex(root));
+        Node<K,V> node = root;
+        
+        while(!node.isLeaf()) {
+            node = node.asBranch().child(0);
+            nextEntry().setNode(node).setIndex(initialIndex(node));
+        }
+
+        return new _Traverser();
+    }
+    
+    public class _Traverser implements Traverser<K,V> {
+
+        public Leaf<K,V> getLeaf() {
+            return current().getNode().asLeaf();
+        }
+
+        public int getIndex() {
+            return current().getIndex();
+        }
+        
+        public boolean hasNext() {
+            if(all.isEmpty()) {
+                return false;
+            }
+            
+            for(int i = 0; i < count; ++i) {
+                final TEntry e = all.get(i);
+                if(e.hasNext()) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        public void next() {
+            if(current().hasNext()) {
+                current().next();
+                return;
+            }
+            else {
+                positionNext();
+                current().next();
+            }
+        }
+
+        public boolean hasPrevious() {
+            throw new UnsupportedOperationException();
+        }
+
+        public void previous() {
+            throw new UnsupportedOperationException();
+        }
+
+        private void positionNext() {
+            for(int i = count - 2; i >= 0; --i) {
+                pop();
+                final TEntry toTest = all.get(i);
+                if(toTest.hasNext()) {
+                    toTest.next();
+                    break;
+                }
+            }
+
+            if(all.isEmpty()) {
+                return;
+            }
+
+            TEntry tentry = current();
+            while(!tentry.getNode().isLeaf()) {
+                final Branch<K,V> branch = tentry.getNode().asBranch();
+                final Node<K,V> node = branch.child(tentry.getIndex());
+                tentry = nextEntry().setNode(node).setIndex(initialIndex(node));
+            }
+        }
+    }
+    
     public interface SiblingRelation<T extends Comparable<T>,U> {
         Branch<T,U> getParent();
         int getIndex();
@@ -69,6 +161,22 @@ class Traversal<K extends Comparable<K>,V> {
         public TEntry setIndex(final int val) { index = val; return this; }
         public int getIndex() { return index; }
 
+        public boolean hasNext() {
+            return index + 1 < node.size();
+        }
+
+        public void next() {
+            ++index;
+        }
+
+        public boolean hasPrevious() {
+            return index >= 0;
+        }
+
+        public void previous() {
+            --index;
+        }
+
         public void clear() {
             node = null;
             index = -1;
@@ -119,11 +227,11 @@ class Traversal<K extends Comparable<K>,V> {
         while(!current.isLeaf()) {
             final Branch<K,V> branch = current.asBranch();
             final int navIndex = branch.navigateIndex(k);
-            next().setNode(current).setIndex(navIndex).getNode();
+            nextEntry().setNode(current).setIndex(navIndex);
             current = branch.child(navIndex);
         }
 
-        next().setNode(current).setIndex(0);
+        nextEntry().setNode(current).setIndex(0);
         return this;
     }
 
@@ -255,7 +363,7 @@ class Traversal<K extends Comparable<K>,V> {
         return grandparent();
     }
 
-    private TEntry next() {
+    private TEntry nextEntry() {
         if(count < all.size()) {
             ++count;
             return current();

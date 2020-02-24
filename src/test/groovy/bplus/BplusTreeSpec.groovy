@@ -6,13 +6,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 class BplusTreeSpec extends Specification {
 
-    private makeLeaf(final ObjectArray oa, final List<Integer> list) {
+    public static makeLeaf(final ObjectArray oa, final List<Integer> list) {
         def leaf = oa.root.newLeaf();
         list.each { leaf.insert(it, it) }
         return leaf;
     }
 
-    private makeBranch(final ObjectArray oa, final List<List<Integer>> lists) {
+    public static makeBranch(final ObjectArray oa, final List<List<Integer>> lists) {
         def branch = oa.root.newBranch()
         lists.eachWithIndex { list, i ->
             branch.sizeUp(1)
