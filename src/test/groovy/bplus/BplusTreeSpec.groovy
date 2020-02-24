@@ -30,9 +30,9 @@ class BplusTreeSpec extends Specification {
         oa.root = makeLeaf(oa, elements)
 
         expect:
-        elements.every { e -> btree.get(e) == e }
-        btree.get(0) == null
-        btree.get(5) == null
+        elements.every { e -> btree.value(e) == e }
+        btree.value(0) == null
+        btree.value(5) == null
     }
 
     def "test get 2 level btree"() {
@@ -44,9 +44,9 @@ class BplusTreeSpec extends Specification {
                                   [9,10,11,12],
                                   [13,14,15,16]])
         expect:
-        (1..16).every { e -> btree.get(e) == e }
-        btree.get(0) == null
-        btree.get(17) == null
+        (1..16).every { e -> btree.value(e) == e }
+        btree.value(0) == null
+        btree.value(17) == null
     }
     
     def "test creation, put, and get no splits"() {
@@ -56,9 +56,9 @@ class BplusTreeSpec extends Specification {
         (0..3).each { num -> btree.put(num, num * 10); }
 
         expect:
-        btree.get(0) == 0
-        btree.get(1) == 10
-        btree.get(2) == 20
+        btree.value(0) == 0
+        btree.value(1) == 10
+        btree.value(2) == 20
     }
 
     def "test insert cases"() {
@@ -189,7 +189,7 @@ class BplusTreeSpec extends Specification {
                     index = i
                     
                     btree.put(toAdd, toAdd)
-                    assert btree.get(toAdd) == toAdd
+                    assert btree.value(toAdd) == toAdd
                     btree.assertValidKeys()
                     btree.assertOrders()
                     keyList = btree.keyList()
@@ -209,7 +209,7 @@ class BplusTreeSpec extends Specification {
                     toRemove = num
                     index = i
                     
-                    btree.remove(toRemove)
+                    btree.delete(toRemove)
                     btree.assertValidKeys()
                     btree.assertOrders()
                     keyList = btree.keyList()
@@ -255,28 +255,28 @@ class BplusTreeSpec extends Specification {
         (0..7).each { num -> btree.put(num, num) }
 
         when:
-        btree.remove(12)
+        btree.delete(12)
 
         then:
         oa.root.size() == 8
 
         when:
-        btree.remove(7)
+        btree.delete(7)
 
         then:
         oa.root.keys() == [0,1,2,3,4,5,6]
         oa.root.size() == 7
 
         when:
-        btree.remove(1)
-        btree.remove(4)
+        btree.delete(1)
+        btree.delete(4)
 
         then:
         oa.root.keys() == [0,2,3,5,6]
         oa.root.size() == 5
 
         when:
-        [0,2,3,5,6].each { btree.remove(it) }
+        [0,2,3,5,6].each { btree.delete(it) }
 
         then:
         oa.root.keys() == []
@@ -300,21 +300,21 @@ class BplusTreeSpec extends Specification {
         oa.root.child(4).keys() == [17,18,19,20]
 
         when:
-        btree.remove(1);
+        btree.delete(1);
 
         then:
         oa.root.keys() == [2,5,9,13,17]
         oa.root.child(0).keys() == [2,3,4]
         
         when:
-        btree.remove(2)
+        btree.delete(2)
 
         then:
         oa.root.keys() == [3,5,9,13,17]
         oa.root.child(0).keys() == [3,4]
 
         when:
-        btree.remove(4)
+        btree.delete(4)
 
         then:
         oa.root.child(0).keys() == [3,5]
@@ -322,7 +322,7 @@ class BplusTreeSpec extends Specification {
         oa.root.keys() == [3,6,9,13,17]
 
         when:
-        btree.remove(5)
+        btree.delete(5)
 
         then:
         oa.root.child(0).keys() == [3,6]
@@ -330,7 +330,7 @@ class BplusTreeSpec extends Specification {
         oa.root.keys() == [3,7,9,13,17]
 
         when:
-        btree.remove(3)
+        btree.delete(3)
 
         then:
         oa.root.child(0).keys() == [6,7,8]
@@ -354,21 +354,21 @@ class BplusTreeSpec extends Specification {
         oa.root.child(4).keys() == [17,18,19,20]
 
         when:
-        btree.remove(19)
+        btree.delete(19)
 
         then:
         oa.root.keys() == [1,5,9,13,17]
         oa.root.child(4).keys() == [17,18,20]
 
         when:
-        btree.remove(17)
+        btree.delete(17)
 
         then:
         oa.root.keys() == [1,5,9,13,18]
         oa.root.child(4).keys() == [18,20]
 
         when:
-        btree.remove(18)
+        btree.delete(18)
 
         then:
         oa.root.keys() == [1,5,9,13,16]
@@ -376,8 +376,8 @@ class BplusTreeSpec extends Specification {
         oa.root.child(4).keys() == [16,20]
 
         when:
-        btree.remove(13)
-        btree.remove(16)
+        btree.delete(13)
+        btree.delete(16)
 
         then:
         oa.root.keys() == [1,5,9,14]
@@ -401,14 +401,14 @@ class BplusTreeSpec extends Specification {
         nextLeft.keys() == [5,6,7,8]
 
         when:
-        [1,2,3,4].each { btree.remove(it) }
+        [1,2,3,4].each { btree.delete(it) }
 
         then:
         farLeft.keys() == [5,6]
         nextLeft.keys() == [7,8]
 
         when:
-        btree.remove(5)
+        btree.delete(5)
         farLeft = upperLeft.child(0)
         
         then:
@@ -417,7 +417,7 @@ class BplusTreeSpec extends Specification {
         upperLeft.keys() == [6,9,13,17]
 
         when:
-        [6,7,8,9,10,11,12,13,14,15,16,17,18].each { btree.remove(it) }
+        [6,7,8,9,10,11,12,13,14,15,16,17,18].each { btree.delete(it) }
 
         then:
         btree.assertValidKeys();
@@ -436,13 +436,13 @@ class BplusTreeSpec extends Specification {
 
             (1..1000).each {
                 num = it
-                btree.remove(it)
+                btree.delete(it)
                 btree.assertValidKeys()
                 btree.assertOrders()
             }
         }
         catch(Exception e) {
-            println "Error when trying to remove ${num}"
+            println "Error when trying to delete ${num}"
             throw e
         }
     }
@@ -460,13 +460,13 @@ class BplusTreeSpec extends Specification {
             (1000..1).each {
                 num = it
 
-                btree.remove(it)
+                btree.delete(it)
                 btree.assertValidKeys()
                 btree.assertOrders()
             }
         }
         catch(Exception e) {
-            println "Error when trying to remove ${num}"
+            println "Error when trying to delete ${num}"
             throw e
         }
     }

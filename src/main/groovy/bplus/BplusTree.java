@@ -1,7 +1,7 @@
 package bplus;
 
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
+import java.util.function.Consumer;
 
 public class BplusTree<K extends Comparable<K>,V>  {
 
@@ -23,7 +23,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
         return ret;
     }
 
-    public V get(final K k) {
+    public V value(final K k) {
         final Traversal<K,V> tr = tlTraversal.get().execute(store.getRoot(), k);
         final Leaf<K,V> leaf = tr.getCurrent().getNode().asLeaf();
         final int index = leaf.search(k);
@@ -60,7 +60,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
         }
     }
 
-    public V remove(final K k) {
+    public V delete(final K k) {
         final Node<K,V> root = store.getRoot();
         final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
         final Leaf<K,V> leaf = traversal.getCurrent().getNode().asLeaf();
@@ -205,7 +205,7 @@ public class BplusTree<K extends Comparable<K>,V>  {
     private void removeLeaf(final Traversal<K,V> traversal, final int index) {
         final Leaf<K,V> current = traversal.getCurrent().getNode().asLeaf();
 
-        //case: base, can always remove the leaf key/value
+        //case: base, can always delete the leaf key/value
         current.remove(index);
         if(index == 0) {
             traversal.resetAncestorKeys();
@@ -340,6 +340,14 @@ public class BplusTree<K extends Comparable<K>,V>  {
         }
     }
 
+    //jdk interface methods
+    public void clear() {
+        walkNodes(store.getRoot(), Node<K,V>::done);
+        store.setRoot(store.getRoot().newLeaf());
+    }
+
+    //views
+
     public boolean assertOrders() {
         final Node<K,V> root = store.getRoot();
         if(root.isLeaf()) {
@@ -433,6 +441,16 @@ public class BplusTree<K extends Comparable<K>,V>  {
     private void keyListLeaf(final List<K> list, final Leaf<K,V> leaf) {
         for(int i = 0; i < leaf.size(); ++i) {
             list.add(leaf.key(i));
+        }
+    }
+
+    private void walkNodes(final Node<K,V> root, final Consumer<Node<K,V>> consumer) {
+        consumer.accept(root);
+        if(root.isBranch()) {
+            final Branch<K,V> branch = root.asBranch();
+            for(int i = 0; i < branch.size(); ++i) {
+                walkNodes(branch.child(i), consumer);
+            }
         }
     }
 }
