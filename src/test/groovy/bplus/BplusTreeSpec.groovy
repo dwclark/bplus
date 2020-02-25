@@ -507,4 +507,16 @@ class BplusTreeSpec extends Specification {
             throw e
         }
     }
+
+    def 'test first and last key'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 16)
+        def btree = new BplusTree(oa)
+        (1..2048).each { btree.put(it, it) }
+
+        expect:
+        btree.firstKey() == 1
+        btree.lastKey() == 2048
+    }
+
 }

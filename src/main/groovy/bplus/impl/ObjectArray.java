@@ -32,6 +32,14 @@ public class ObjectArray<K extends Comparable<K>,V> implements NodeStore<K,V> {
         root = val;
     }
 
+    public Class<K> getKeyType() {
+        return keyType;
+    }
+
+    public Class<V> getValueType() {
+        return valueType;
+    }
+
     private class Base {
         private int _size = 0;
         protected final Object[] ary;

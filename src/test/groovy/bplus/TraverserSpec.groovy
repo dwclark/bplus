@@ -13,7 +13,7 @@ class TraverserSpec extends Specification {
         (1..1024).each { btree.put(it, it) }
 
         when:
-        def traverser = new Traversal().leftTraverser(oa.root)
+        def traverser = Traversal.newMutable().leftTraverser(oa.root)
 
         then:
         traverser.hasNext();
