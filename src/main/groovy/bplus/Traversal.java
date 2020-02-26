@@ -7,8 +7,12 @@ import java.util.Collections;
 abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traversal<K,V>> {
 
     public int compareTo(final Traversal<K,V> traversal) {
-        if(count() != traversal.count() ||  get(0) != traversal.get(0)) {
-            throw new IllegalStateException("traversals are not of same btree");
+        if(count() != traversal.count()) {
+            throw new IllegalStateException("traversals are not of same height");
+        }
+
+        if(get(0).getNode() != traversal.get(0).getNode()) {
+            throw new IllegalStateException("traversals don't have same root");
         }
 
         for(int i = 0; i < count(); ++i) {
@@ -41,32 +45,6 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
     }
 
     public Traverser<K,V> traverser() {
-        return new _Traverser();
-    }
-    
-    public Traverser<K,V> leftTraverser(final Node<K,V> root) {
-        clear();
-        nextEntry().setNode(root).setIndex(initialIndex(root));
-        Node<K,V> node = root;
-        
-        while(!node.isLeaf()) {
-            node = node.asBranch().child(0);
-            nextEntry().setNode(node).setIndex(initialIndex(node));
-        }
-
-        return new _Traverser();
-    }
-
-    public Traverser<K,V> rightTraverser(final Node<K,V> root) {
-        clear();
-        nextEntry().setNode(root).setIndex(lastIndex(root));
-        Node<K,V> node = root;
-        
-        while(!node.isLeaf()) {
-            node = node.asBranch().child(lastIndex(node));
-            nextEntry().setNode(node).setIndex(lastIndex(node));
-        }
-
         return new _Traverser();
     }
     
@@ -305,6 +283,32 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
 
         final Leaf<K,V> leaf = current.asLeaf();
         nextEntry().setNode(current).setIndex(leaf.search(k));
+        return this;
+    }
+
+    public Traversal<K,V> leftTraversal(final Node<K,V> root) {
+        clear();
+        nextEntry().setNode(root).setIndex(initialIndex(root));
+        Node<K,V> node = root;
+        
+        while(!node.isLeaf()) {
+            node = node.asBranch().child(0);
+            nextEntry().setNode(node).setIndex(initialIndex(node));
+        }
+
+        return this;
+    }
+    
+    public Traversal<K,V> rightTraversal(final Node<K,V> root) {
+        clear();
+        nextEntry().setNode(root).setIndex(lastIndex(root));
+        Node<K,V> node = root;
+        
+        while(!node.isLeaf()) {
+            node = node.asBranch().child(lastIndex(node));
+            nextEntry().setNode(node).setIndex(lastIndex(node));
+        }
+
         return this;
     }
 
