@@ -459,7 +459,7 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
                 all.add(toCopy.get(i).mutable());
             }
 
-            this.count = count;
+            this.count = toCopy.count();
         }
 
         protected Entry get(final int i) {

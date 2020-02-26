@@ -50,8 +50,35 @@ class TraverserSpec extends Specification {
         10.times { traverser.next() }
 
         then:
-        (lower <=> upper) == 0
-        
+        (lower <=> upper) == 0        
+    }
+
+    def 'test right and left traversal'() {
+        setup:
+        def oa = new ObjectArray(Integer,Integer, 8)
+        def btree = new BplusTree(oa);
+        (1..1024).each { btree.put(it, it) }
+
+        when:
+        def left = Traversal.newMutable().leftTraversal(oa.root)
+        def lower = Traversal.newMutable().execute(oa.root, 100);
+        def upper = Traversal.newMutable().rightTraversal(oa.root);
+
+        then:
+        (lower <=> upper) == -1
+        (left <=> lower) == -1
+        (left <=> upper) == -1
+
+        when:
+        def list = []
+        def traverser = left.traverser()
+        while(left < lower) {
+            traverser.next()
+            list << traverser.leaf.key(traverser.index)
+        }
+
+        then:
+        list == (1..100)
     }
 }
 
