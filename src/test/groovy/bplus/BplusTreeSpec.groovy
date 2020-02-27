@@ -170,7 +170,7 @@ class BplusTreeSpec extends Specification {
 
     def "test add/remove random"() {
         setup:
-        10.times {
+        2.times {
             def max = 4096
             def list = new ArrayList(max)
             (0..<max).each { list.add(it) }
@@ -512,11 +512,81 @@ class BplusTreeSpec extends Specification {
         setup:
         def oa = new ObjectArray(Integer, Integer, 16)
         def btree = new BplusTree(oa)
+
+        when:
+        (1..2048).each { btree.put(it, it) }
+
+        then:
+        btree.firstKey() == 1
+        btree.lastKey() == 2048
+
+        when:
+        btree = new BplusTree(new ObjectArray(Integer, Integer, 16))
+        btree.firstKey()
+
+        then:
+        thrown NoSuchElementException
+
+        when:
+        btree.lastKey()
+
+        then:
+        thrown NoSuchElementException
+    }
+
+    def 'test key set implementation'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 16)
+        def btree = new BplusTree(oa)
         (1..2048).each { btree.put(it, it) }
 
         expect:
-        btree.firstKey() == 1
-        btree.lastKey() == 2048
+        btree.keySet() as List == (1..2048)
+        btree.keySet().size() == 2048
+    }
+
+    def 'test contains key/value'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 16)
+        def btree = new BplusTree(oa)
+        (1..2048).each { btree.put(it, it) }
+
+        expect:
+        btree.containsKey(200);
+        !btree.containsKey(2049);
+        btree.containsValue(200);
+        !btree.containsValue(2049);
+    }
+
+    def 'test put all'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 16)
+        def btree = new BplusTree(oa)
+        def map = [:]
+        (1..2048).each { map[it] = it }
+        btree.putAll(map);
+
+        expect:
+        btree.entrySet() == map.entrySet();
+        btree.hashCode() == map.hashCode();
+    }
+
+    def 'test clear'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 16)
+        def btree = new BplusTree(oa)
+
+        when:
+        (1..2048).each { btree.put(it, it) }
+
+        then:
+        btree.size() == 2048
+
+        when:
+        btree.clear();
+
+        then:
+        btree.size() == 0
     }
 
 }
