@@ -976,17 +976,6 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
     }
     
-    public List<K> keyList() {
-        final List<K> ret = new ArrayList<>();
-        final Traversal.Traverser<K,V> traverser = Traversal.<K,V>newMutable().leftTraversal(store.getRoot()).traverser();
-        while(traverser.hasNext()) {
-            traverser.next();
-            ret.add(traverser.getLeaf().key(traverser.getIndex()));
-        }
-
-        return ret;
-    }
-    
     private void depthFirst(final Node<K,V> root, final Consumer<Node<K,V>> consumer) {
         if(root.isBranch()) {
             final Branch<K,V> branch = root.asBranch();

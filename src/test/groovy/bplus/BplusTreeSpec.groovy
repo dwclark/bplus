@@ -146,7 +146,7 @@ class BplusTreeSpec extends Specification {
                 index = i
 
                 btree.put(toAdd, toAdd)
-                keyList = btree.keyList()
+                keyList = new ArrayList(btree.keySet())
                 sortedKeyList = new ArrayList(keyList)
                 sortedKeyList.sort()
 
@@ -192,7 +192,7 @@ class BplusTreeSpec extends Specification {
                     assert btree.value(toAdd).get() == toAdd
                     btree.assertValidKeys()
                     btree.assertOrders()
-                    keyList = btree.keyList()
+                    keyList = new ArrayList(btree.keySet())
                     sortedKeyList = new ArrayList(keyList)
                     sortedKeyList.sort()
                     
@@ -212,7 +212,7 @@ class BplusTreeSpec extends Specification {
                     btree.delete(toRemove)
                     btree.assertValidKeys()
                     btree.assertOrders()
-                    keyList = btree.keyList()
+                    keyList = new ArrayList(btree.keySet())
                     sortedKeyList = new ArrayList(keyList)
                     sortedKeyList.sort()
                     
@@ -489,7 +489,7 @@ class BplusTreeSpec extends Specification {
                 btree.put(toAdd, toAdd)
                 btree.assertValidKeys()
                 btree.assertOrders()
-                keyList = btree.keyList()
+                keyList = new ArrayList(btree.keySet());
                 sortedKeyList = new ArrayList(keyList)
                 sortedKeyList.sort()
                 
