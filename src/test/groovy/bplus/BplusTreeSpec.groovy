@@ -30,9 +30,9 @@ class BplusTreeSpec extends Specification {
         oa.root = makeLeaf(oa, elements)
 
         expect:
-        elements.every { e -> btree.value(e) == e }
-        btree.value(0) == null
-        btree.value(5) == null
+        elements.every { e -> btree.value(e).get() == e }
+        !btree.value(0).present
+        !btree.value(5).present
     }
 
     def "test get 2 level btree"() {
@@ -44,9 +44,9 @@ class BplusTreeSpec extends Specification {
                                   [9,10,11,12],
                                   [13,14,15,16]])
         expect:
-        (1..16).every { e -> btree.value(e) == e }
-        btree.value(0) == null
-        btree.value(17) == null
+        (1..16).every { e -> btree.value(e).get() == e }
+        !btree.value(0).present
+        !btree.value(17).present
     }
     
     def "test creation, put, and get no splits"() {
@@ -56,9 +56,9 @@ class BplusTreeSpec extends Specification {
         (0..3).each { num -> btree.put(num, num * 10); }
 
         expect:
-        btree.value(0) == 0
-        btree.value(1) == 10
-        btree.value(2) == 20
+        btree.value(0).get() == 0
+        btree.value(1).get() == 10
+        btree.value(2).get() == 20
     }
 
     def "test insert cases"() {
@@ -189,7 +189,7 @@ class BplusTreeSpec extends Specification {
                     index = i
                     
                     btree.put(toAdd, toAdd)
-                    assert btree.value(toAdd) == toAdd
+                    assert btree.value(toAdd).get() == toAdd
                     btree.assertValidKeys()
                     btree.assertOrders()
                     keyList = btree.keyList()

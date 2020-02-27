@@ -37,11 +37,11 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return ary[0];
     }
 
-    public V value(final K k) {
+    public Optional<V> value(final K k) {
         final Traversal<K,V> tr = tlTraversal.get().execute(store.getRoot(), k);
         final Leaf<K,V> leaf = tr.current().getNode().asLeaf();
         final int index = tr.current().getIndex();
-        return index >= 0 ? leaf.value(index) : null;
+        return index >= 0 ? Optional.of(leaf.value(index)) : Optional.empty();
     }
 
     public V put(final K k, final V v) {
@@ -393,7 +393,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
 
     public V get(final Object o) {
-        return value(store.getKeyType().cast(o));
+        final Optional<V> opt = value(store.getKeyType().cast(o));
+        return opt.isPresent() ? opt.get() : null;
     }
 
     public void putAll(final Map<? extends K, ? extends V> map) {
@@ -479,8 +480,6 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return entrySet().hashCode();
     }
 
-    //views
-    //TODO: add more efficient versions of methods where possible (mainly find based methods)
     protected static <T> int iteratorCount(final Iterator<T> iter) {
         int count = 0;
         while(iter.hasNext()) {
@@ -512,9 +511,17 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
     }
 
+    //views
+    //TODO: add more efficient versions of methods where possible (mainly find based methods)
     private class KeysSet extends AbstractSet<K> {
         public int size() { return BplusTree.this.size(); }
         public Iterator<K> iterator() { return new KeysIterator(); }
+
+        @Override
+        public boolean contains(final Object o) { return containsKey(o); }
+
+        @Override
+        public boolean isEmpty() { return BplusTree.this.isEmpty(); }
     }
 
     private class BoundKeysIterator implements Iterator<K> {
@@ -551,6 +558,16 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         
         public Iterator<K> iterator() {
             return new BoundKeysIterator(map);
+        }
+
+        @Override
+        public boolean contains(final Object o) {
+            return map.containsKey(o);
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return map.isEmpty();
         }
     }
     
@@ -630,6 +647,22 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     private class EntriesSet extends AbstractSet<Map.Entry<K,V>> {
         public int size() { return BplusTree.this.size(); }
         public Iterator<Map.Entry<K,V>> iterator() { return new EntriesIterator(); }
+
+        @Override
+        public boolean contains(final Object o) {
+            if(!(o instanceof Map.Entry)) {
+                return false;
+            }
+
+            final Map.Entry entry = (Map.Entry) o;
+            final Optional<V> opt = value(store.getKeyType().cast(entry.getKey()));
+            return (opt.isPresent() && opt.get().equals(entry.getValue()));
+        }
+        
+        @Override
+        public boolean isEmpty() {
+            return BplusTree.this.isEmpty();
+        }
     }
 
     private class BoundEntriesIterator implements Iterator<Map.Entry<K,V>> {
@@ -666,6 +699,17 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         
         public Iterator<Map.Entry<K,V>> iterator() {
             return new BoundEntriesIterator(map);
+        }
+
+        @Override
+        public boolean contains(final Object o) {
+            if(!(o instanceof Map.Entry)) {
+                return false;
+            }
+            
+            final Map.Entry entry = (Map.Entry) o;
+            final Optional<V> opt = map.value(store.getKeyType().cast(entry.getKey()));
+            return (opt.isPresent() && opt.get().equals(entry.getValue()));
         }
     }
 
@@ -792,13 +836,20 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return entrySet().equals(rhs.entrySet());
         }
 
-        private V _get(final Traversal<K,V> tr) {
+        private Optional<V> _value(final Traversal<K,V> tr){
             final int index = tr.current().getIndex();
-            return index >= 0 ? tr.current().getNode().asLeaf().value(index) : null;
+            return (index >= 0 ?
+                    Optional.of(tr.current().getNode().asLeaf().value(index)) :
+                    Optional.empty());
+        }
+        
+        public Optional<V> value(final K k) {
+            return checkBounds(k, Optional.empty(), this::_value);
         }
         
         public V get(final Object o) {
-            return checkBounds(store.getKeyType().cast(o), null, this::_get);
+            final Optional<V> opt = value(store.getKeyType().cast(o));
+            return opt.isPresent() ? opt.get() : null;
         }
 
         @Override
