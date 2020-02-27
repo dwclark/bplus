@@ -512,7 +512,6 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
 
     //views
-    //TODO: add more efficient versions of methods where possible (mainly find based methods)
     private class KeysSet extends AbstractSet<K> {
         public int size() { return BplusTree.this.size(); }
         public Iterator<K> iterator() { return new KeysIterator(); }
