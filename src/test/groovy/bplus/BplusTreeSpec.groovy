@@ -534,6 +534,26 @@ class BplusTreeSpec extends Specification {
         thrown NoSuchElementException
     }
 
+    def 'test first and last entry'() {
+        setup:
+        def oa = new ObjectArray(Integer, Integer, 16)
+        def btree = new BplusTree(oa)
+
+        when:
+        (1..2048).each { btree.put(it, it) }
+
+        then:
+        btree.firstEntry() == new MapEntry(1,1)
+        btree.lastEntry() == new MapEntry(2048, 2048)
+
+        when:
+        btree = new BplusTree(new ObjectArray(Integer, Integer, 16))
+
+        then:
+        btree.firstEntry() == null
+        btree.lastEntry() == null
+    }
+
     def 'test key set implementation'() {
         setup:
         def oa = new ObjectArray(Integer, Integer, 16)

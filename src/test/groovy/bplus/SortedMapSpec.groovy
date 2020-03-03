@@ -21,7 +21,9 @@ class SortedMapSpec extends Specification {
         btree.tailMap(100).keySet() as List == (100..1024)
         btree.tailMap(100).values() as List == (100..1024)
         btree.tailMap(100).firstKey() == 100
+        btree.tailMap(100).firstEntry() == new MapEntry(100, 100)
         btree.tailMap(100).lastKey() == 1024
+        btree.tailMap(100).lastEntry() == new MapEntry(1024, 1024)
     }
 
     def 'test head map'() {
@@ -76,6 +78,8 @@ class SortedMapSpec extends Specification {
         map.isEmpty()
         !map2.isEmpty()
         map2.size() == 1
+        map.firstEntry() == null
+        map.lastEntry() == null
     }
 
     def 'test bad ranges'() {
