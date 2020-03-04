@@ -3,6 +3,9 @@ package bplus;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Map;
+import java.util.function.Supplier;
+import static bplus.Node.insertIndex;
 
 abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traversal<K,V>> {
 
@@ -31,9 +34,11 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         Leaf<T,U> getLeaf();
         int getIndex();
         boolean hasNext();
-        void next();
+        Traverser<T,U> next();
         boolean hasPrevious();
-        void previous();
+        Traverser<T,U> previous();
+        T key(final Supplier<T> onEmpty);
+        Map.Entry<T,U> entry(final Supplier<Map.Entry<T,U>> onEmpty);
     }
 
     private int initialIndex(final Node<K,V> node) {
@@ -47,9 +52,38 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
     public Traverser<K,V> traverser() {
         return new _Traverser();
     }
+
+    public Traverser<K,V> forwardPositioned() {
+        final Entry entry = current();
+
+        if(entry.getIndex() < 0) {
+            entry.setIndex(insertIndex(entry.getIndex()));
+        }
+
+        entry.setIndex(entry.getIndex() - 1);
+        return new _Traverser();
+    }
     
     public class _Traverser implements Traverser<K,V> {
 
+        public K key(final Supplier<K> onEmpty) {
+            if(isEmpty()) {
+                return onEmpty.get();
+            }
+            else {
+                return getLeaf().key(getIndex());
+            }
+        }
+
+        public Map.Entry<K,V> entry(final Supplier<Map.Entry<K,V>> onEmpty) {
+            if(isEmpty()) {
+                return onEmpty.get();
+            }
+            else {
+                return getLeaf().entry(getIndex());
+            }
+        }
+        
         public Leaf<K,V> getLeaf() {
             return current().getNode().asLeaf();
         }
@@ -73,30 +107,32 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
             return false;
         }
 
-        public void next() {
+        public _Traverser next() {
             if(current().hasNext()) {
                 current().next();
-                return;
             }
             else {
                 positionNext();
                 current().next();
             }
+
+            return this;
         }
 
         public boolean hasPrevious() {
             throw new UnsupportedOperationException();
         }
 
-        public void previous() {
+        public _Traverser previous() {
             if(current().hasPrevious()) {
                 current().previous();
-                return;
             }
             else {
                 positionPrevious();
                 current().previous();
             }
+            
+            return this;
         }
 
         private void positionNext() {

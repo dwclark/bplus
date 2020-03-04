@@ -428,26 +428,41 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return new ValuesCollection();
     }
 
-    private K throwEmpty() {
-        throw new NoSuchElementException("tree is empty");
-    }
-
-    private <T> T checkEmpty(final Supplier<T> ifEmpty, final Supplier<T> notEmpty) {
-        return isEmpty() ? ifEmpty.get() : notEmpty.get();
-    }
-
-    public K firstKey() {
-        return checkEmpty(this::throwEmpty, () -> store.getRoot().key(0));
-    }
-
-    private Map.Entry<K,V> _firstEntry() {
-        final Traversal.Traverser<K,V> traverser = tlTraversal.get().leftTraversal(store.getRoot()).traverser();
-        traverser.next();
-        return traverser.getLeaf().entry(traverser.getIndex());
+    private Traversal.Traverser<K,V> _ceiling(final K k) {
+        final Traversal<K,V> traversal = tlTraversal.get();
+        final Traversal.Traverser<K,V> traverser = traversal.execute(store.getRoot(), k).forwardPositioned();
+        if(traverser.hasNext()) {
+            return traverser.next();
+        }
+        else {
+            traversal.clear();
+            return traverser;
+        }
     }
     
+    public K ceilingKey(final K k) {
+        return _ceiling(k).key(() -> null);
+    }
+
+    public Map.Entry<K,V> ceilingEntry(final K k) {
+        return _ceiling(k).entry(() -> null);
+    }
+
+    private Traversal.Traverser<K,V> _first() {
+        final Traversal.Traverser<K,V> traverser = tlTraversal.get().leftTraversal(store.getRoot()).traverser();
+        return traverser.next();
+    }
+    
+    public K firstKey() {
+        if(isEmpty()) {
+            throw new NoSuchElementException("tree is empty");
+        }
+
+        return store.getRoot().key(0);
+    }
+
     public Map.Entry<K,V> firstEntry() {
-        return checkEmpty(() -> null, this::_firstEntry);
+        return isEmpty() ? null : _first().entry(() -> null);
     }
     
     public SortedMap<K,V> headMap(final K toKey) {
@@ -469,24 +484,21 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return boundMap(lower, upper);
     }
 
-    private K _lastKey() {
+    private Traversal.Traverser<K,V> _last() {
         final Traversal.Traverser<K,V> traverser = tlTraversal.get().rightTraversal(store.getRoot()).traverser();
-        traverser.previous();
-        return traverser.getLeaf().key(traverser.getIndex());
-    }
-
-    private Map.Entry<K,V> _lastEntry() {
-        final Traversal.Traverser<K,V> traverser = tlTraversal.get().rightTraversal(store.getRoot()).traverser();
-        traverser.previous();
-        return traverser.getLeaf().entry(traverser.getIndex());
+        return traverser.previous();
     }
     
     public K lastKey() {
-        return checkEmpty(this::throwEmpty, this::_lastKey);
+        if(isEmpty()) {
+            throw new NoSuchElementException("tree is empty");
+        }
+        
+        return _last().key(() -> null);
     }
 
     public Map.Entry<K,V> lastEntry() {
-        return checkEmpty(() -> null, this::_lastEntry);
+        return isEmpty() ? null : _last().entry(() -> null);
     }
 
     @Override
@@ -884,24 +896,21 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return isEmpty() ? ifEmpty.get() : notEmpty.get();
         }
 
-        private K _firstKey() {
+        private Traversal.Traverser<K,V> _first() {
             final Traversal.Traverser<K,V> traverser = lower.mutable().traverser();
-            traverser.next();
-            return traverser.getLeaf().key(traverser.getIndex());
+            return traverser.next();
         }
 
-        private Map.Entry<K,V> _firstEntry() {
-            final Traversal.Traverser<K,V> traverser = lower.mutable().traverser();
-            traverser.next();
-            return traverser.getLeaf().entry(traverser.getIndex());
+        public K firstKey() {
+            if(isEmpty()) {
+                throw new NoSuchElementException("tree is empty");
+            }
+
+            return _first().key(() -> null);
         }
         
-        public K firstKey() {
-            return checkEmpty(BplusTree.this::throwEmpty, this::_firstKey);
-        }
-
         public Map.Entry<K,V> firstEntry() {
-            return checkEmpty(() -> null, this::_firstEntry);
+            return isEmpty() ? null : _first().entry(() -> null);
         }
 
         public boolean isEmpty() {
@@ -927,11 +936,15 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
         
         public K lastKey() {
-            return checkEmpty(BplusTree.this::throwEmpty, this::_lastKey);
+            if(isEmpty()) {
+                throw new NoSuchElementException("tree is empty");
+            }
+            
+            return upper.mutable().traverser().key(() -> null);
         }
 
         public Map.Entry<K,V> lastEntry() {
-            return checkEmpty(() -> null, this::_lastEntry);
+            return isEmpty() ? null : upper.mutable().traverser().entry(() -> null);
         }
 
         public V put(final K k, final V v) {
