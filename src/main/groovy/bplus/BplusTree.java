@@ -8,22 +8,51 @@ import static bplus.Node.insertIndex;
 
 public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap<K,V> {
 
+    private class Working {
+        private final List<Node<K,V>> done = new ArrayList<>(4);
+        private Node<K,V> orphan = null;
+        
+        void addDone(final Node<K,V> node) {
+            done.add(node);
+        }
+
+        void disown(final Node<K,V> node) {
+            this.orphan = node;
+        }
+
+        boolean hasOrphan() {
+            return orphan != null;
+        }
+
+        Node<K,V> adoptOrphan() {
+            final Node<K,V> ret = orphan;
+            orphan = null;
+            return ret;
+        }
+
+        void done() {
+            if(hasOrphan()) {
+                throw new IllegalStateException();
+            }
+
+            for(Node<K,V> node : done) {
+                node.done();
+            }
+
+            done.clear();
+        }
+    }
+    
     private final NodeStore<K,V> store;
     private final ThreadLocal<Traversal<K,V>> tlTraversal = ThreadLocal.withInitial(Traversal::newMutable);
+    private final ThreadLocal<Working> tlWorking = ThreadLocal.withInitial(Working::new);
     
     public BplusTree(final NodeStore<K,V> store) {
         this.store = store;
     }
 
     public int height() {
-        Node<K,V> node = store.getRoot();
-        int ret = 1;
-        while(node.isBranch()) {
-            ++ret;
-            node = node.asBranch().child(0);
-        }
-
-        return ret;
+        return store.getRoot().leftTraverse().size();
     }
 
     public long longSize() {
@@ -39,10 +68,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
 
     public Optional<V> value(final K k) {
-        final Traversal<K,V> tr = tlTraversal.get().execute(store.getRoot(), k);
-        final Leaf<K,V> leaf = tr.current().getNode().asLeaf();
-        final int index = tr.current().getIndex();
-        return index >= 0 ? Optional.of(leaf.value(index)) : Optional.empty();
+        final NodeTraversal<K,V> tr = store.getRoot().leafOnly(k);
+        return tr.index() >= 0 ? Optional.of(tr.value(null)) : Optional.empty();
     }
 
     public V put(final K k, final V v) {
@@ -63,7 +90,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                 putLeaf(traversal, k, v);
                 traversal.pop();
             }
-            else if(traversal.hasOrphan()) {
+            else if(tlWorking.get().hasOrphan()) {
                 putBranch(traversal);
                 traversal.pop();
             }
@@ -73,8 +100,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
 
         //if there is a remaining orphan, we need a new root
-        if(traversal.hasOrphan()) {
-            final Node<K,V> orphan = traversal.adoptOrphan();
+        if(tlWorking.get().hasOrphan()) {
+            final Node<K,V> orphan = tlWorking.get().adoptOrphan();
             final Branch<K,V> newRoot = store.getRoot().newBranch();
             newRoot.sizeUp(2);
             newRoot.put(0, store.getRoot());
@@ -109,11 +136,11 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             }
 
             if(root.isBranch() && root.size() == 1) {
-                traversal.addDone(root);
+                tlWorking.get().addDone(root);
                 store.setRoot(root.asBranch().child(0));
             }
 
-            traversal.done();
+            tlWorking.get().done();
         }
         
         return ret;
@@ -168,14 +195,14 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
         //case: split node
         final Leaf<K,V> newRightSibling = leaf.split(k, v);
-        traversal.disown(newRightSibling);
+        tlWorking.get().disown(newRightSibling);
         traversal.resetAncestorKeys();
     }
 
     private void putBranch(final Traversal<K,V> traversal) {
         final Traversal<K,V>.Entry currentEntry = traversal.current();
         final Branch<K,V> current = currentEntry.getNode().asBranch();
-        final Node<K,V> orphan = traversal.adoptOrphan();
+        final Node<K,V> orphan = tlWorking.get().adoptOrphan();
 
         //case: current node is not full
         if(!current.isFull()) {
@@ -223,7 +250,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
         //case: split branch
         final Node<K,V> newRight = current.split(orphan);
-        traversal.disown(newRight);
+        tlWorking.get().disown(newRight);
         traversal.resetAncestorKeys();
     }
 
@@ -265,7 +292,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                     traversal.resetAncestorKeys();
                 }
                 
-                traversal.addDone(current);
+                tlWorking.get().addDone(current);
             }
 
             return;
@@ -296,7 +323,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                     traversal.resetAncestorKeys();
                 }
                 
-                traversal.addDone(current);
+                tlWorking.get().addDone(current);
             }
         }
     }
@@ -328,7 +355,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                     traversal.resetAncestorKeys();
                 }
                 
-                traversal.addDone(current);
+                tlWorking.get().addDone(current);
             }
             
             return;
@@ -360,7 +387,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                     traversal.resetAncestorKeys();
                 }
 
-                traversal.addDone(current);
+                tlWorking.get().addDone(current);
             }
         }
     }

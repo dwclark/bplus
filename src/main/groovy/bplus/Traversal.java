@@ -472,11 +472,6 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
     abstract protected Traversal<K,V> clear();
     abstract protected Entry nextEntry();
     abstract protected void pop();
-    abstract public void addDone(final Node<K,V> node);
-    abstract public void done();
-    abstract public boolean hasOrphan();
-    abstract public Node<K,V> adoptOrphan();
-    abstract public void disown(final Node<K,V> val);
     
     public static <K extends Comparable<K>,V> Traversal<K,V> newMutable() {
         return new MutableTraversal<>();
@@ -497,16 +492,12 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
     
     private static class MutableTraversal<K extends Comparable<K>,V> extends Traversal<K,V> {
 
-        private final List<Node<K,V>> doneNodes;
         private final List<Entry> all;
         private int count;
-        private Node<K,V> orphan;
 
         MutableTraversal() {
             this.all = new ArrayList<>(5);
-            this.doneNodes = new ArrayList<>(2);
             this.count = 0;
-            this.orphan = null;
         }
 
         MutableTraversal(final Traversal<K,V> toCopy) {
@@ -536,9 +527,7 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
                 all.get(i).clear();
             }
             
-            doneNodes.clear();
             count = 0;
-            orphan = null;
             return this;
         }
 
@@ -558,30 +547,6 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         public void pop() {
             current().clear();
             --count;
-        }
-
-        public void addDone(final Node<K,V> node) {
-            doneNodes.add(node);
-        }
-        
-        public void done() {
-            for(Node<K,V> node : doneNodes) {
-                node.done();
-            }
-        }
-        
-        public boolean hasOrphan() {
-            return orphan != null;
-        }
-        
-        public Node<K,V> adoptOrphan() {
-            final Node<K,V> ret = orphan;
-            orphan = null;
-            return ret;
-        }
-        
-        public void disown(final Node<K,V> val) {
-            this.orphan = val;
         }
     }
 
@@ -613,26 +578,6 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         }
         
         protected void pop() {
-            throw new UnsupportedOperationException();
-        }
-        
-        public void addDone(final Node<K,V> node) {
-            throw new UnsupportedOperationException();
-        }
-        
-        public void done() {
-            throw new UnsupportedOperationException();
-        }
-        
-        public boolean hasOrphan() {
-            throw new UnsupportedOperationException();
-        }
-        
-        public Node<K,V> adoptOrphan() {
-            throw new UnsupportedOperationException();
-        }
-        
-        public void disown(final Node<K,V> val) {
             throw new UnsupportedOperationException();
         }
     }

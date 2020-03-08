@@ -108,9 +108,11 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
     
     default void leftTraverse(NodeTraversal<K,V> traversal) {
         traversal.add(this, 0);
+        child(0).leftTraverse(traversal);
     }
     
     default void rightTraverse(NodeTraversal<K,V> traversal) {
         traversal.add(this, size() - 1);
+        child(size() - 1).rightTraverse(traversal);
     }
 }

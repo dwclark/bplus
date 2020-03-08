@@ -84,6 +84,10 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         return isEmpty() ? onEmpty : leaf().entry(index());
     }
 
+    public V value(final V onEmpty) {
+        return isEmpty() ? onEmpty : leaf().value(index());
+    }
+
     public NodeTraversal<K,V> empty() {
         return new EmptyTraversal<>();
     }
@@ -226,14 +230,16 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
     static class LeafOnly<K extends Comparable<K>,V> extends NodeTraversal<K,V> {
         private Step<K,V> leafStep = null;
         
-        public boolean isEmpty() { return leafStep != null; }
+        public boolean isEmpty() { return leafStep == null; }
         
         public NodeTraversal<K,V> next() {
-            throw new UnsupportedOperationException();
+            leafStep.next();
+            return this;
         }
 
         public NodeTraversal<K,V> previous() {
-            throw new UnsupportedOperationException();
+            leafStep.previous();
+            return this;
         }
 
         public Step<K,V> get(int level) {
@@ -310,11 +316,55 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         public boolean isEmpty() { return steps.isEmpty(); }
         
         public NodeTraversal<K,V> next() {
-            throw new UnsupportedOperationException();
+            if(!current().hasNext()) {
+                nextNode();
+            }
+
+            current().next();
+            return this;
+        }
+
+        private void nextNode() {
+            for(int i = size() - 2; i >= 0; --i) {
+                pop();
+                final Step<K,V> toTest = get(i);
+                if(toTest.hasNext()) {
+                    toTest.next();
+                    break;
+                }
+            }
+
+            if(isEmpty()) {
+                return;
+            }
+
+            branch().child(index()).leftTraverse(this);
         }
 
         public NodeTraversal<K,V> previous() {
-            throw new UnsupportedOperationException();
+            if(!current().hasPrevious()) {
+                previousNode();
+            }
+            
+            current().previous();
+            return this;
+        }
+
+        private void previousNode() {
+            for(int i = size() - 2; i >= 0; --i) {
+                pop();
+                final Step<K,V> toTest = get(i);
+                if(toTest.hasPrevious()) {
+                    toTest.previous();
+                    break;
+                }
+            }
+            
+            if(isEmpty()) {
+                return;
+            }
+
+            branch().child(index()).rightTraverse(this);
         }
 
         public Step<K,V> get(int level) {
@@ -331,6 +381,111 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
 
         public Step<K,V> pop() {
             return steps.remove(level());
+        }
+    }
+
+    public interface SiblingRelation<T extends Comparable<T>,U> {
+        Branch<T,U> getParent();
+        int getIndex();
+        Node<T,U> getSibling();
+        void resetAncestorKeys();
+    }
+
+    private class SameFamily implements SiblingRelation<K,V> {
+        private final Step<K,V> parentEntry;
+        private final Node<K,V> sibling;
+        
+        private SameFamily(final Step<K,V> parentEntry, final Node<K,V> sibling) {
+            this.parentEntry = parentEntry;
+            this.sibling = sibling;
+        }
+        
+        public Branch<K,V> getParent() { return parentEntry.node().asBranch(); }
+        public int getIndex() { return parentEntry.index(); }
+        public Node<K,V> getSibling() { return sibling; }
+
+        public void resetAncestorKeys() {
+            parentEntry.node().asBranch().resetKey(parentEntry.index());
+            resetKeys(level() - 2, parentEntry.index());
+        }
+    }
+
+    private class AdoptedFamily implements SiblingRelation<K,V> {
+        private final Step<K,V> grandparentEntry;
+        private final Step<K,V> uncleEntry;
+        private final Node<K,V> sibling;
+
+        private AdoptedFamily(final Step<K,V> grandparentEntry, final Step<K,V> uncleEntry,
+                              final Node<K,V> sibling) {
+            this.grandparentEntry = grandparentEntry;
+            this.uncleEntry = uncleEntry;
+            this.sibling = sibling;
+        }
+
+        public Branch<K,V> getParent() { return grandparentEntry.node().asBranch(); }
+        public int getIndex() { return grandparentEntry.index(); }
+        public Node<K,V> getSibling() { return sibling; }
+
+        public void resetAncestorKeys() {
+            uncleEntry.node().asBranch().resetKey(uncleEntry.index());
+            grandparentEntry.node().asBranch().resetKey(grandparentEntry.index());
+            resetKeys(level() - 3, grandparentEntry.index());
+        }
+    }
+
+    public SiblingRelation<K,V> getLeftSibling() {
+        final Step<K,V> parentEntry = parent();
+        if(parentEntry == null) {
+            return null;
+        }
+
+        if(parentEntry.index() > 0) {
+            final Branch<K,V> parent = parentEntry.node().asBranch();
+            final int index = parentEntry.index() - 1;
+            return new SameFamily(new ImmutableStep<>(parent, index), parent.child(index));
+        }
+        else {
+            final Step<K,V> tmpEntry = grandparent();
+            if(tmpEntry == null || tmpEntry.index() == 0) {
+                return null;
+            }
+
+            final Branch<K,V> grandparent = tmpEntry.node().asBranch();
+            final int grandparentNavIndex = tmpEntry.index() - 1;
+            final Step<K,V> grandparentEntry = new ImmutableStep<>(grandparent, grandparentNavIndex);
+            final Branch<K,V> uncle = grandparent.child(grandparentNavIndex).asBranch();
+            final int uncleNavIndex = uncle.lastIndex();
+            final Step<K,V> uncleEntry = new ImmutableStep<>(uncle, uncleNavIndex);
+            final Node<K,V> cousin = uncle.child(uncleNavIndex);
+            return new AdoptedFamily(grandparentEntry, uncleEntry, cousin);
+        }
+    }
+
+    public SiblingRelation<K,V> getRightSibling() {
+        final Step<K,V> parentEntry = parent();
+        if(parentEntry == null) {
+            return null;
+        }
+
+        if(parentEntry.index() + 1 < parentEntry.node().size()) {
+            final Branch<K,V> parent = parentEntry.node().asBranch();
+            final int index = parentEntry.index() + 1;
+            return new SameFamily(new ImmutableStep<>(parent, index), parent.child(index));
+        }
+        else {
+            final Step<K,V> tmpEntry = grandparent();
+            if(tmpEntry == null || (tmpEntry.index() + 1 == tmpEntry.node().size())) {
+                return null;
+            }
+            
+            final Branch<K,V> grandparent = tmpEntry.node().asBranch();
+            final int grandparentNavIndex = tmpEntry.index() + 1;
+            final Step<K,V> grandparentEntry = new ImmutableStep<>(grandparent, grandparentNavIndex);
+            final Branch<K,V> uncle = grandparent.child(grandparentNavIndex).asBranch();
+            final int uncleNavIndex = 0;
+            final Step<K,V> uncleEntry = new ImmutableStep<>(uncle, uncleNavIndex);
+            final Node<K,V> cousin = uncle.child(uncleNavIndex);
+            return new AdoptedFamily(grandparentEntry, uncleEntry, cousin);
         }
     }
 }
