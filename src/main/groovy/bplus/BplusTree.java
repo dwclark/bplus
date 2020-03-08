@@ -73,17 +73,15 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
 
     public V put(final K k, final V v) {
-        final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
-        final Traversal<K,V>.Entry foundEntry = traversal.current();
+        final NodeTraversal<K,V> traversal = store.getRoot().traverse(k);
         V ret = null;
         
-        if(foundEntry.getIndex() >= 0) {
-            final Leaf<K,V> leaf = foundEntry.getNode().asLeaf();
-            ret = leaf.value(foundEntry.getIndex());
+        if(traversal.index() >= 0) {
+            ret = traversal.value(null);
         }
         
         while(traversal.level() >= 0) {
-            final Node<K,V> current = traversal.current().getNode();
+            final Node<K,V> current = traversal.current().node();
 
             //handle leaf
             if(current.isLeaf()) {
@@ -146,8 +144,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return ret;
     }
     
-    private void putLeaf(final Traversal<K,V> traversal, final K k, final V v) {
-        final Leaf<K,V> leaf = traversal.current().getNode().asLeaf();
+    private void putLeaf(final NodeTraversal<K,V> traversal, final K k, final V v) {
+        final Leaf<K,V> leaf = traversal.leaf();
 
         //case: can insert in current leaf
         if(!leaf.isFull()) {
@@ -159,7 +157,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
 
         //case: can borrow space in left sibling
-        final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
+        final NodeTraversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
         if(leftRel != null && !leftRel.getSibling().isFull()) {
             final Leaf<K,V> sibling = leftRel.getSibling().asLeaf();
             sibling.sizeUp(1);
@@ -171,7 +169,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
 
         //case: can borrow space in right sibling
-        final Traversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
+        final NodeTraversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
         if(rightRel != null && !rightRel.getSibling().isFull()) {
             final Leaf<K,V> sibling = rightRel.getSibling().asLeaf();
             sibling.sizeUp(1).shiftRight(0, 1);
@@ -199,9 +197,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         traversal.resetAncestorKeys();
     }
 
-    private void putBranch(final Traversal<K,V> traversal) {
-        final Traversal<K,V>.Entry currentEntry = traversal.current();
-        final Branch<K,V> current = currentEntry.getNode().asBranch();
+    private void putBranch(final NodeTraversal<K,V> traversal) {
+        final Branch<K,V> current = traversal.branch();
         final Node<K,V> orphan = tlWorking.get().adoptOrphan();
 
         //case: current node is not full
@@ -215,7 +212,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
 
         //case: share space with left sibling
-        final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
+        final NodeTraversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
         if(leftRel != null && !leftRel.getSibling().isFull()) {
             final Branch<K,V> sibling = leftRel.getSibling().asBranch();
             sibling.sizeUp(1);
@@ -227,7 +224,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
 
         //case: share space with right sibling
-        final Traversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
+        final NodeTraversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
         if(rightRel != null && !rightRel.getSibling().isFull()) {
             final Branch<K,V> sibling = rightRel.getSibling().asBranch();
             sibling.sizeUp(1).shiftRight(0, 1);
