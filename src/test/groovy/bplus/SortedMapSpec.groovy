@@ -95,4 +95,46 @@ class SortedMapSpec extends Specification {
         then:
         thrown(IllegalArgumentException)
     }
+
+    def 'test ceiling'() {
+        setup:
+        def map = basicMap()
+
+        expect:
+        map.ceilingKey(10) == 10
+        map.ceilingEntry(10) == new MapEntry(10, 10)
+        map.ceilingKey(-1) == 1
+        map.ceilingEntry(-1) == new MapEntry(1,1)
+        map.ceilingKey(1500) == null
+        map.ceilingEntry(1500) == null
+    }
+
+    def 'test floor'() {
+        setup:
+        def map = basicMap()
+
+        expect:
+        map.floorKey(100) == 100
+        map.floorEntry(100) == new MapEntry(100, 100)
+        map.floorKey(1500) == 1024
+        map.floorEntry(1500) == new MapEntry(1024, 1024)
+        map.floorKey(1) == 1
+        map.floorEntry(1) == new MapEntry(1,1)
+        map.floorKey(0) == null
+        map.floorEntry(0) == null
+    }
+
+    @Ignore
+    def 'test higher'() {
+        setup:
+        def map = basicMap();
+
+        expect:
+        map.higherKey(99) == 100
+        map.higherEntry(99) == new MapEntry(100,100)
+        map.higherKey(1024) == null
+        map.higherEntry(1024) == null
+        map.higherKey(0) == 1
+        map.higherEntry(0) == new MapEntry(1,1)
+    }
 }

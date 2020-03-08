@@ -16,7 +16,10 @@ public interface Node<K extends Comparable<K>,V> {
     Node<K,V> copy(int srcPos, Node<K,V> src, int pos, int length);
     Branch<K,V> newBranch();
     Leaf<K,V> newLeaf();
-
+    void traverse(NodeTraversal<K,V> traversal, K k);
+    void leftTraverse(NodeTraversal<K,V> traversal);
+    void rightTraverse(NodeTraversal<K,V> traversal);
+    
     default int lastIndex() {
         return size() - 1;
     }
@@ -96,6 +99,30 @@ public interface Node<K extends Comparable<K>,V> {
     
     default Node<K,V> shiftRight(int at, int by) {
         return copy(at, at + by, size() - (at + by));
+    }
+
+    default NodeTraversal<K,V> traverse(K k) {
+        final NodeTraversal<K,V> tr = NodeTraversal.makeMutable();
+        traverse(tr, k);
+        return tr;
+    }
+    
+    default NodeTraversal<K,V> leftTraverse() {
+        final NodeTraversal<K,V> tr = NodeTraversal.makeMutable();
+        leftTraverse(tr);
+        return tr;
+    }
+    
+    default NodeTraversal<K,V> rightTraverse() {
+        final NodeTraversal<K,V> tr = NodeTraversal.makeMutable();
+        rightTraverse(tr);
+        return tr;
+    }
+
+    default NodeTraversal<K,V> leafOnly(K k) {
+        final NodeTraversal<K,V> tr = NodeTraversal.makeLeafOnly();
+        traverse(tr, k);
+        return tr;
     }
 
     static int insertIndex(final int searchIndex) {

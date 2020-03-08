@@ -99,4 +99,18 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
             return _index - 1;
         }
     }
+
+    default void traverse(NodeTraversal<K,V> traversal, K k) {
+        final int navIndex = navigateIndex(k);
+        traversal.add(this, navIndex);
+        child(navIndex).traverse(traversal, k);
+    }
+    
+    default void leftTraverse(NodeTraversal<K,V> traversal) {
+        traversal.add(this, 0);
+    }
+    
+    default void rightTraverse(NodeTraversal<K,V> traversal) {
+        traversal.add(this, size() - 1);
+    }
 }

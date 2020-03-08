@@ -430,7 +430,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
     private Traversal.Traverser<K,V> _ceiling(final K k) {
         final Traversal<K,V> traversal = tlTraversal.get();
-        final Traversal.Traverser<K,V> traverser = traversal.execute(store.getRoot(), k).forwardPositioned();
+        final Traversal.Traverser<K,V> traverser = traversal.execute(store.getRoot(), k).nextPositioned();
         if(traverser.hasNext()) {
             return traverser.next();
         }
@@ -464,7 +464,64 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     public Map.Entry<K,V> firstEntry() {
         return isEmpty() ? null : _first().entry(() -> null);
     }
-    
+
+    private Traversal.Traverser<K,V> _floor(final K k) {
+        final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
+        if(traversal.current().getIndex() >= 0) {
+            return traversal.traverser();
+        }
+
+        final Traversal.Traverser<K,V> traverser = traversal.positioned();
+        if(traverser.hasPrevious()) {
+            return traverser.previous();
+        }
+        else {
+            traversal.clear();
+            return traverser;
+        }
+    }
+
+    public K floorKey(final K k) {
+        return isEmpty() ? null : _floor(k).key(() -> null);
+    }
+
+    public Map.Entry<K,V> floorEntry(final K k) {
+        return isEmpty() ? null : _floor(k).entry(() -> null);
+    }
+
+    private Traversal.Traverser<K,V> _higher(final K k) {
+        final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
+        final Traversal.Traverser<K,V> traverser = traversal.positioned();
+        
+        if(traversal.current().getIndex() >= 0) {
+            if(traverser.hasNext()) {
+                return traverser.next();
+            }
+            else {
+                traversal.clear();
+                return traverser;
+            }
+        }
+
+        if(traverser.hasPrevious()) {
+            traverser.previous();
+            if(traverser.hasNext()) {
+                return traverser.next();
+            }
+        }
+
+        traversal.clear();
+        return traverser;
+    }
+
+    public K higherKey(final K k) {
+        return isEmpty() ? null : _higher(k).key(() -> null);
+    }
+
+    public Map.Entry<K,V> higherEntry(final K k) {
+        return isEmpty() ? null : _higher(k).entry(() -> null);
+    }
+
     public SortedMap<K,V> headMap(final K toKey) {
         final Traversal<K,V> lower = Traversal.<K,V>newMutable().leftTraversal(store.getRoot());
         final Traversal<K,V> upper = Traversal.<K,V>newMutable().execute(store.getRoot(), toKey);

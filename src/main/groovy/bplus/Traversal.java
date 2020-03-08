@@ -53,7 +53,7 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         return new _Traverser();
     }
 
-    public Traverser<K,V> forwardPositioned() {
+    public Traverser<K,V> nextPositioned() {
         final Entry entry = current();
 
         if(entry.getIndex() < 0) {
@@ -61,6 +61,16 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         }
 
         entry.setIndex(entry.getIndex() - 1);
+        return new _Traverser();
+    }
+
+    public Traverser<K,V> positioned() {
+        final Entry entry = current();
+
+        if(entry.getIndex() < 0) {
+            entry.setIndex(insertIndex(entry.getIndex()));
+        }
+
         return new _Traverser();
     }
     
@@ -120,7 +130,18 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         }
 
         public boolean hasPrevious() {
-            throw new UnsupportedOperationException();
+            if(isEmpty()) {
+                return false;
+            }
+
+            for(int i = 0; i < count(); ++i) {
+                final Entry e = get(i);
+                if(e.hasPrevious()) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public _Traverser previous() {
@@ -244,7 +265,7 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         }
 
         public boolean hasPrevious() {
-            return getIndex() >- 0;
+            return getIndex() > 0;
         }
 
         public void previous() {
@@ -507,7 +528,7 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         }
 
         protected boolean isEmpty() {
-            return all.isEmpty();
+            return count == 0;
         }
 
         protected Traversal<K,V> clear() {
