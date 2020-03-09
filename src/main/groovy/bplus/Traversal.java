@@ -6,29 +6,29 @@ import java.util.ArrayList;
 import java.util.Collections;
 import static bplus.Node.insertIndex;
 
-abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<NodeTraversal<K,V>> {
+abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traversal<K,V>> {
 
-    public static <K extends Comparable<K>,V> NodeTraversal<K,V> makeMutable() {
+    public static <K extends Comparable<K>,V> Traversal<K,V> makeMutable() {
         return new MutableTraversal<>();
     }
 
-    public static <K extends Comparable<K>,V> NodeTraversal<K,V> makeEmpty() {
+    public static <K extends Comparable<K>,V> Traversal<K,V> makeEmpty() {
         return new EmptyTraversal<>();
     }
 
-    public static <K extends Comparable<K>,V> NodeTraversal<K,V> makeLeafOnly() {
+    public static <K extends Comparable<K>,V> Traversal<K,V> makeLeafOnly() {
         return new LeafOnly<>();
     }
     
-    public abstract NodeTraversal<K,V> next();
-    public abstract NodeTraversal<K,V> previous();
+    public abstract Traversal<K,V> next();
+    public abstract Traversal<K,V> previous();
     public abstract Step<K,V> get(int level);
     public abstract int size();
     public abstract void add(final Node<K,V> node, final int index);
     public abstract Step<K,V> pop();
     public abstract boolean isEmpty();
     
-    public int compareTo(final NodeTraversal<K,V> traversal) {
+    public int compareTo(final Traversal<K,V> traversal) {
         if(size() != traversal.size()) {
             throw new IllegalStateException("traversals are not of same height");
         }
@@ -58,7 +58,7 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
     public int index() { return current().index(); }
     public boolean isMatch() { return index() >= 0 && index() < leaf().size(); }
 
-    public NodeTraversal<K,V> positionInsert() {
+    public Traversal<K,V> positionInsert() {
         final Step<K,V> c = current();
         c.index(insertIndex(c.index()));
         return this;
@@ -96,15 +96,15 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         return isEmpty() ? onEmpty : leaf().value(index());
     }
 
-    public NodeTraversal<K,V> empty() {
+    public Traversal<K,V> empty() {
         return new EmptyTraversal<>();
     }
 
-    public NodeTraversal<K,V> mutable() {
+    public Traversal<K,V> mutable() {
         return isEmpty() ? new MutableTraversal<K,V>() : new MutableTraversal<K,V>(this);
     }
 
-    public NodeTraversal<K,V> immutable() {
+    public Traversal<K,V> immutable() {
         if((this instanceof EmptyTraversal) || (this instanceof ImmutableTraversal)) {
             return this;
         }
@@ -207,14 +207,14 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         }
     }
 
-    static class EmptyTraversal<K extends Comparable<K>,V> extends NodeTraversal<K,V> {
+    static class EmptyTraversal<K extends Comparable<K>,V> extends Traversal<K,V> {
         public boolean isEmpty() { return true; }
         
-        public NodeTraversal<K,V> next() {
+        public Traversal<K,V> next() {
             throw new UnsupportedOperationException();
         }
 
-        public NodeTraversal<K,V> previous() {
+        public Traversal<K,V> previous() {
             throw new UnsupportedOperationException();
         }
 
@@ -235,17 +235,17 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         }
     }
 
-    static class LeafOnly<K extends Comparable<K>,V> extends NodeTraversal<K,V> {
+    static class LeafOnly<K extends Comparable<K>,V> extends Traversal<K,V> {
         private Step<K,V> leafStep = null;
         
         public boolean isEmpty() { return leafStep == null; }
         
-        public NodeTraversal<K,V> next() {
+        public Traversal<K,V> next() {
             leafStep.next();
             return this;
         }
 
-        public NodeTraversal<K,V> previous() {
+        public Traversal<K,V> previous() {
             leafStep.previous();
             return this;
         }
@@ -271,10 +271,10 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         }
     }
 
-    static class ImmutableTraversal<K extends Comparable<K>,V> extends NodeTraversal<K,V> {
+    static class ImmutableTraversal<K extends Comparable<K>,V> extends Traversal<K,V> {
         private final List<Step<K,V>> steps;
 
-        public ImmutableTraversal(final NodeTraversal<K,V> toCopy) {
+        public ImmutableTraversal(final Traversal<K,V> toCopy) {
             final List<Step<K,V>> tmp = new ArrayList<>(toCopy.size());
             for(int i = 0; i < toCopy.size(); ++i) {
                 tmp.add(toCopy.get(i).immutable());
@@ -285,11 +285,11 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         
         public boolean isEmpty() { return steps.isEmpty(); }
         
-        public NodeTraversal<K,V> next() {
+        public Traversal<K,V> next() {
             throw new UnsupportedOperationException();
         }
 
-        public NodeTraversal<K,V> previous() {
+        public Traversal<K,V> previous() {
             throw new UnsupportedOperationException();
         }
 
@@ -310,12 +310,12 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         }
     }
 
-    static class MutableTraversal<K extends Comparable<K>,V> extends NodeTraversal<K,V> {
+    static class MutableTraversal<K extends Comparable<K>,V> extends Traversal<K,V> {
         private final List<Step<K,V>> steps = new ArrayList<>(4);
 
         public MutableTraversal() {}
 
-        public MutableTraversal(final NodeTraversal<K,V> toCopy) {
+        public MutableTraversal(final Traversal<K,V> toCopy) {
             for(int i = 0; i < toCopy.size(); ++i) {
                 steps.add(toCopy.get(i).mutable());
             }
@@ -323,7 +323,7 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
         
         public boolean isEmpty() { return steps.isEmpty(); }
         
-        public NodeTraversal<K,V> next() {
+        public Traversal<K,V> next() {
             if(!current().hasNext()) {
                 nextNode();
             }
@@ -349,7 +349,7 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
             branch().child(index()).leftTraverse(this);
         }
 
-        public NodeTraversal<K,V> previous() {
+        public Traversal<K,V> previous() {
             if(!current().hasPrevious()) {
                 previousNode();
             }

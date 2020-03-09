@@ -122,15 +122,15 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
         return ret;
     }
     
-    default void traverse(NodeTraversal<K,V> traversal, K k) {
+    default void traverse(Traversal<K,V> traversal, K k) {
         traversal.add(this, search(k));
     }
     
-    default void leftTraverse(NodeTraversal<K,V> traversal) {
+    default void leftTraverse(Traversal<K,V> traversal) {
         traversal.add(this, -1);
     }
     
-    default void rightTraverse(NodeTraversal<K,V> traversal) {
+    default void rightTraverse(Traversal<K,V> traversal) {
         traversal.add(this, insertIndex(size()));
     }
 }
