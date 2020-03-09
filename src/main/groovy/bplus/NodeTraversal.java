@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+import static bplus.Node.insertIndex;
 
 abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<NodeTraversal<K,V>> {
 
@@ -55,7 +56,14 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
     public Leaf<K,V> leaf() { return current().node().asLeaf(); }
     public Branch<K,V> branch() { return current().node().asBranch(); }
     public int index() { return current().index(); }
+    public boolean isMatch() { return index() >= 0 && index() < leaf().size(); }
 
+    public NodeTraversal<K,V> positionInsert() {
+        final Step<K,V> c = current();
+        c.index(insertIndex(c.index()));
+        return this;
+    }
+    
     public boolean hasNext() {
         for(int i = 0; i < size(); ++i) {
             if(get(i).hasNext()) {
@@ -68,7 +76,7 @@ abstract class NodeTraversal<K extends Comparable<K>,V> implements Comparable<No
 
     public boolean hasPrevious() {
         for(int i = 0; i < size(); ++i) {
-            if(get(i).hasNext()) {
+            if(get(i).hasPrevious()) {
                 return true;
             }
         }

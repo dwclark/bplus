@@ -44,7 +44,6 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
     
     private final NodeStore<K,V> store;
-    private final ThreadLocal<Traversal<K,V>> tlTraversal = ThreadLocal.withInitial(Traversal::newMutable);
     private final ThreadLocal<Working> tlWorking = ThreadLocal.withInitial(Working::new);
     
     public BplusTree(final NodeStore<K,V> store) {
@@ -112,13 +111,13 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
     public V delete(final K k) {
         final Node<K,V> root = store.getRoot();
-        final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
-        final Leaf<K,V> leaf = traversal.current().getNode().asLeaf();
-        final int index = leaf.search(k);
+        final NodeTraversal<K,V> traversal = store.getRoot().traverse(k);
+        final Leaf<K,V> leaf = traversal.leaf();
+        final int index = traversal.index();
         final V ret = (index >= 0) ? leaf.value(index) : null;
         if(index >= 0) {
             while(traversal.level() >= 0) {
-                final Node<K,V> current = traversal.current().getNode();
+                final Node<K,V> current = traversal.current().node();
                 
                 if(current.isLeaf()) {
                     removeLeaf(traversal, index);
@@ -251,8 +250,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         traversal.resetAncestorKeys();
     }
 
-    private void removeLeaf(final Traversal<K,V> traversal, final int index) {
-        final Leaf<K,V> current = traversal.current().getNode().asLeaf();
+    private void removeLeaf(final NodeTraversal<K,V> traversal, final int index) {
+        final Leaf<K,V> current = traversal.leaf();
 
         //case: base, can always delete the leaf key/value
         current.remove(index);
@@ -265,7 +264,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return;
         }
 
-        final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
+        final NodeTraversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
         if(leftRel != null) {
             final Leaf<K,V> sibling = leftRel.getSibling().asLeaf();
             if(sibling.isAboveMinLimit()) {
@@ -282,10 +281,10 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                 final int copyIndex = sibling.size();
                 sibling.sizeUp(current.size());
                 sibling.copy(0, current, copyIndex, current.size());
-                final Traversal<K,V>.Entry parentEntry = traversal.parent();
-                final Branch<K,V> parent = parentEntry.getNode().asBranch();
-                parent.remove(parentEntry.getIndex());
-                if(parentEntry.getIndex() == 0) {
+                final NodeTraversal.Step<K,V> parentEntry = traversal.parent();
+                final Branch<K,V> parent = parentEntry.node().asBranch();
+                parent.remove(parentEntry.index());
+                if(parentEntry.index() == 0) {
                     traversal.resetAncestorKeys();
                 }
                 
@@ -295,7 +294,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return;
         }
 
-        final Traversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
+        final NodeTraversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
         if(rightRel != null) {
             final Leaf<K,V> sibling = rightRel.getSibling().asLeaf();
             if(sibling.isAboveMinLimit()) {
@@ -313,10 +312,10 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                 sibling.shiftRight(0, current.size());
                 sibling.copy(0, current, 0, current.size());
                 rightRel.resetAncestorKeys();
-                final Traversal<K,V>.Entry parentEntry = traversal.parent();
-                final Branch<K,V> parent = parentEntry.getNode().asBranch();
-                parent.remove(parentEntry.getIndex());
-                if(parentEntry.getIndex() == 0) {
+                final NodeTraversal.Step<K,V> parentEntry = traversal.parent();
+                final Branch<K,V> parent = parentEntry.node().asBranch();
+                parent.remove(parentEntry.index());
+                if(parentEntry.index() == 0) {
                     traversal.resetAncestorKeys();
                 }
                 
@@ -325,11 +324,11 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
     }
     
-    private void removeBranch(final Traversal<K,V> traversal) {
+    private void removeBranch(final NodeTraversal<K,V> traversal) {
         //current is below limit, child was already removed previously
-        final Branch<K,V> current = traversal.current().getNode().asBranch();
+        final Branch<K,V> current = traversal.branch();
 
-        final Traversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
+        final NodeTraversal.SiblingRelation<K,V> leftRel = traversal.getLeftSibling();
         if(leftRel != null) {
             final Branch<K,V> sibling = leftRel.getSibling().asBranch();
             if(sibling.isAboveMinLimit()) {
@@ -345,10 +344,10 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                 final int insertIndex = sibling.size();
                 sibling.sizeUp(current.size());
                 sibling.copy(0, current, insertIndex, current.size());
-                final Traversal<K,V>.Entry parentEntry = traversal.parent();
-                final Branch<K,V> parent = parentEntry.getNode().asBranch();
-                parent.remove(parentEntry.getIndex());
-                if(parentEntry.getIndex() == 0) {
+                final NodeTraversal.Step<K,V> parentEntry = traversal.parent();
+                final Branch<K,V> parent = parentEntry.node().asBranch();
+                parent.remove(parentEntry.index());
+                if(parentEntry.index() == 0) {
                     traversal.resetAncestorKeys();
                 }
                 
@@ -358,7 +357,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return;
         }
 
-        final Traversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
+        final NodeTraversal.SiblingRelation<K,V> rightRel = traversal.getRightSibling();
         if(rightRel != null) {
             final Branch<K,V> sibling = rightRel.getSibling().asBranch();
             if(sibling.isAboveMinLimit()) {
@@ -377,10 +376,10 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                 sibling.copy(0, current, 0, current.size());
                 rightRel.resetAncestorKeys();
 
-                final Traversal<K,V>.Entry parentEntry = traversal.parent();
-                final Branch<K,V> parent = parentEntry.getNode().asBranch();
-                parent.remove(parentEntry.getIndex());
-                if(parentEntry.getIndex() == 0) {
+                final NodeTraversal.Step<K,V> parentEntry = traversal.parent();
+                final Branch<K,V> parent = parentEntry.node().asBranch();
+                parent.remove(parentEntry.index());
+                if(parentEntry.index() == 0) {
                     traversal.resetAncestorKeys();
                 }
 
@@ -401,9 +400,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
     public boolean containsKey(final Object o) {
         final K k = store.getKeyType().cast(o);
-        final Traversal<K,V> tr = tlTraversal.get().execute(store.getRoot(), k);
-        final int index = tr.current().getIndex();
-        return index >= 0;
+        return store.getRoot().traverse(k).isMatch();
     }
 
     public boolean containsValue(final Object val) {
@@ -452,31 +449,24 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return new ValuesCollection();
     }
 
-    private Traversal.Traverser<K,V> _ceiling(final K k) {
-        final Traversal<K,V> traversal = tlTraversal.get();
-        final Traversal.Traverser<K,V> traverser = traversal.execute(store.getRoot(), k).nextPositioned();
-        if(traverser.hasNext()) {
-            return traverser.next();
+    private NodeTraversal<K,V> _ceiling(final K k) {
+        final NodeTraversal<K,V> traversal = store.getRoot().traverse(k);
+        if(traversal.isMatch()) {
+            return traversal;
         }
-        else {
-            traversal.clear();
-            return traverser;
-        }
+
+        traversal.positionInsert();
+        return traversal.isMatch() ? traversal : traversal.empty();
     }
     
     public K ceilingKey(final K k) {
-        return _ceiling(k).key(() -> null);
+        return _ceiling(k).key(null);
     }
 
     public Map.Entry<K,V> ceilingEntry(final K k) {
-        return _ceiling(k).entry(() -> null);
+        return _ceiling(k).entry(null);
     }
 
-    private Traversal.Traverser<K,V> _first() {
-        final Traversal.Traverser<K,V> traverser = tlTraversal.get().leftTraversal(store.getRoot()).traverser();
-        return traverser.next();
-    }
-    
     public K firstKey() {
         if(isEmpty()) {
             throw new NoSuchElementException("tree is empty");
@@ -486,88 +476,61 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
 
     public Map.Entry<K,V> firstEntry() {
-        return isEmpty() ? null : _first().entry(() -> null);
+        return isEmpty() ? null : store.getRoot().leftTraverse().next().entry(null);
     }
 
-    private Traversal.Traverser<K,V> _floor(final K k) {
-        final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
-        if(traversal.current().getIndex() >= 0) {
-            return traversal.traverser();
+    private NodeTraversal<K,V> _floor(final K k) {
+        final NodeTraversal<K,V> traversal = store.getRoot().traverse(k);
+        if(traversal.isMatch()) {
+            return traversal;
         }
 
-        final Traversal.Traverser<K,V> traverser = traversal.positioned();
-        if(traverser.hasPrevious()) {
-            return traverser.previous();
-        }
-        else {
-            traversal.clear();
-            return traverser;
-        }
+        traversal.positionInsert();
+        return traversal.hasPrevious() ? traversal.previous() : traversal.empty();
     }
 
     public K floorKey(final K k) {
-        return isEmpty() ? null : _floor(k).key(() -> null);
+        return isEmpty() ? null : _floor(k).key(null);
     }
 
     public Map.Entry<K,V> floorEntry(final K k) {
-        return isEmpty() ? null : _floor(k).entry(() -> null);
+        return isEmpty() ? null : _floor(k).entry(null);
     }
 
-    private Traversal.Traverser<K,V> _higher(final K k) {
-        final Traversal<K,V> traversal = tlTraversal.get().execute(store.getRoot(), k);
-        final Traversal.Traverser<K,V> traverser = traversal.positioned();
-        
-        if(traversal.current().getIndex() >= 0) {
-            if(traverser.hasNext()) {
-                return traverser.next();
-            }
-            else {
-                traversal.clear();
-                return traverser;
-            }
+    private NodeTraversal<K,V> _higher(final K k) {
+        final NodeTraversal<K,V> traversal = store.getRoot().traverse(k);
+
+        if(traversal.isMatch()) {
+            return traversal.hasNext() ? traversal.next() : traversal.empty();
         }
 
-        if(traverser.hasPrevious()) {
-            traverser.previous();
-            if(traverser.hasNext()) {
-                return traverser.next();
-            }
-        }
-
-        traversal.clear();
-        return traverser;
+        traversal.positionInsert();
+        return traversal.isMatch() ? traversal : traversal.empty();
     }
 
     public K higherKey(final K k) {
-        return isEmpty() ? null : _higher(k).key(() -> null);
+        return isEmpty() ? null : _higher(k).key(null);
     }
 
     public Map.Entry<K,V> higherEntry(final K k) {
-        return isEmpty() ? null : _higher(k).entry(() -> null);
+        return isEmpty() ? null : _higher(k).entry(null);
     }
 
     public SortedMap<K,V> headMap(final K toKey) {
-        final Traversal<K,V> lower = Traversal.<K,V>newMutable().leftTraversal(store.getRoot());
-        final Traversal<K,V> upper = Traversal.<K,V>newMutable().execute(store.getRoot(), toKey);
-        return boundMap(lower, upper); 
+        return boundMap(store.getRoot().leftTraverse(), store.getRoot().traverse(toKey)); 
     }
 
     public SortedMap<K,V> tailMap(final K fromKey) {
-        final Traversal<K,V> lower = Traversal.<K,V>newMutable().execute(store.getRoot(), fromKey);
-        final Traversal<K,V> upper = Traversal.<K,V>newMutable().rightTraversal(store.getRoot());
-        return boundMap(lower, upper);
+        return boundMap(store.getRoot().traverse(fromKey), store.getRoot().rightTraverse());
     }
 
     public SortedMap<K,V> subMap(final K fromKey, final K toKey) {
         checkRange(fromKey, toKey);
-        final Traversal<K,V> lower = Traversal.<K,V>newMutable().execute(store.getRoot(), fromKey);
-        final Traversal<K,V> upper = Traversal.<K,V>newMutable().execute(store.getRoot(), toKey);
-        return boundMap(lower, upper);
+        return boundMap(store.getRoot().traverse(fromKey), store.getRoot().traverse(toKey));
     }
-
-    private Traversal.Traverser<K,V> _last() {
-        final Traversal.Traverser<K,V> traverser = tlTraversal.get().rightTraversal(store.getRoot()).traverser();
-        return traverser.previous();
+    
+    private NodeTraversal<K,V> _last() {
+        return store.getRoot().rightTraverse().positionInsert().previous();
     }
     
     public K lastKey() {
@@ -575,11 +538,11 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             throw new NoSuchElementException("tree is empty");
         }
         
-        return _last().key(() -> null);
+        return _last().key(null);
     }
 
     public Map.Entry<K,V> lastEntry() {
-        return isEmpty() ? null : _last().entry(() -> null);
+        return isEmpty() ? null : _last().entry(null);
     }
 
     @Override
@@ -613,22 +576,18 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
     }
 
+    //views
     private class KeysIterator implements Iterator<K> {
-        private final Traversal.Traverser<K,V> traverser;
+        private final NodeTraversal<K,V> traversal;
         
         KeysIterator() {
-            this.traverser = Traversal.<K,V>newMutable().leftTraversal(store.getRoot()).traverser();
+            this.traversal = store.getRoot().leftTraverse();
         }
 
-        public boolean hasNext() { return traverser.hasNext(); }
-
-        public K next() {
-            traverser.next();
-            return traverser.getLeaf().key(traverser.getIndex());
-        }
+        public boolean hasNext() { return traversal.hasNext(); }
+        public K next() { return traversal.next().key(null); }
     }
 
-    //views
     private class KeysSet extends AbstractSet<K> {
         public int size() { return BplusTree.this.size(); }
         public Iterator<K> iterator() { return new KeysIterator(); }
@@ -640,67 +599,15 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         public boolean isEmpty() { return BplusTree.this.isEmpty(); }
     }
 
-    private class BoundKeysIterator implements Iterator<K> {
-        private final Traversal<K,V> lower;
-        private final Traversal<K,V> upper;
-        private final Traversal.Traverser<K,V> traverser;
-        
-        BoundKeysIterator(final BoundMap map) {
-            this.lower = map.lower.mutable();
-            this.upper = map.upper;
-            this.traverser = lower.traverser();
-        }
-
-        public boolean hasNext() {
-            return traverser.hasNext() && lower.compareTo(upper) < 0;
-        }
-
-        public K next() {
-            traverser.next();
-            return traverser.getLeaf().key(traverser.getIndex());
-        }
-    }
-
-    private class BoundKeysSet extends AbstractSet<K> {
-        private final BoundMap map;
-
-        BoundKeysSet(final BoundMap map) {
-            this.map = map;
-        }
-        
-        public int size() {
-            return iteratorCount(iterator());
-        }
-        
-        public Iterator<K> iterator() {
-            return new BoundKeysIterator(map);
-        }
-
-        @Override
-        public boolean contains(final Object o) {
-            return map.containsKey(o);
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return map.isEmpty();
-        }
-    }
-    
     private class ValuesIterator implements Iterator<V> {
-
-        private final Traversal.Traverser<K,V> traverser;
+        private final NodeTraversal<K,V> traversal;
         
         ValuesIterator() {
-            this.traverser = Traversal.<K,V>newMutable().leftTraversal(store.getRoot()).traverser();
+            this.traversal = store.getRoot().leftTraverse();
         }
 
-        public boolean hasNext() { return traverser.hasNext(); }
-        
-        public V next() {
-            traverser.next();
-            return traverser.getLeaf().value(traverser.getIndex());
-        }
+        public boolean hasNext() { return traversal.hasNext(); }
+        public V next() { return traversal.next().value(null); }
     }
 
     private class ValuesCollection extends AbstractCollection<V> {
@@ -708,56 +615,15 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         public Iterator<V> iterator() { return new ValuesIterator(); }
     }
 
-    private class BoundValuesIterator implements Iterator<V> {
-        private final Traversal<K,V> lower;
-        private final Traversal<K,V> upper;
-        private final Traversal.Traverser<K,V> traverser;
-
-        BoundValuesIterator(final BoundMap map) {
-            lower = map.lower.mutable();
-            upper = map.upper;
-            traverser = lower.traverser();
-        }
-
-        public boolean hasNext() {
-            return traverser.hasNext() && lower.compareTo(upper) < 0;
-        }
-        
-        public V next() {
-            traverser.next();
-            return traverser.getLeaf().value(traverser.getIndex());
-        }
-    }
-
-    private class BoundValuesCollection extends AbstractCollection<V> {
-        private final BoundMap map;
-        
-        BoundValuesCollection(final BoundMap map) {
-            this.map = map;
-        }
-
-        public int size() {
-            return iteratorCount(iterator());
-        }
-        
-        public Iterator<V> iterator() {
-            return new BoundValuesIterator(map);
-        }
-    }
-
     private class EntriesIterator implements Iterator<Map.Entry<K,V>> {
-        private final Traversal.Traverser<K,V> traverser;
+        private final NodeTraversal<K,V> traversal;
 
         EntriesIterator() {
-            this.traverser = Traversal.<K,V>newMutable().leftTraversal(store.getRoot()).traverser();
+            this.traversal = store.getRoot().leftTraverse();
         }
 
-        public boolean hasNext() { return traverser.hasNext(); }
-
-        public Map.Entry<K,V> next() {
-            traverser.next();
-            return traverser.getLeaf().entry(traverser.getIndex());
-        }
+        public boolean hasNext() { return traversal.hasNext(); }
+        public Map.Entry<K,V> next() { return traversal.next().entry(null); }
     }
 
     private class EntriesSet extends AbstractSet<Map.Entry<K,V>> {
@@ -781,25 +647,75 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
     }
 
+    private class BoundKeysIterator implements Iterator<K> {
+        private final NodeTraversal<K,V> upper;
+        private final NodeTraversal<K,V> tr;
+        
+        BoundKeysIterator(final BoundMap map) {
+            this.upper = map.upper.immutable();
+            this.tr = map.lower.mutable();
+        }
+
+        public boolean hasNext() { return tr.hasNext() && tr.compareTo(upper) < 0; }
+        public K next() { return tr.next().key(null); }
+    }
+
+    private class BoundKeysSet extends AbstractSet<K> {
+        private final BoundMap map;
+        
+        BoundKeysSet(final BoundMap map) {
+            this.map = map;
+        }
+        
+        public int size() { return iteratorCount(iterator()); }
+        public Iterator<K> iterator() { return new BoundKeysIterator(map); }
+        
+        @Override
+        public boolean contains(final Object o) {
+            return map.containsKey(o);
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return map.isEmpty();
+        }
+    }
+    
+    private class BoundValuesIterator implements Iterator<V> {
+        private final NodeTraversal<K,V> upper;
+        private final NodeTraversal<K,V> tr;
+        
+        BoundValuesIterator(final BoundMap map) {
+            upper = map.upper.immutable();
+            tr = map.lower.mutable();
+        }
+        
+        public boolean hasNext() { return tr.hasNext() && tr.compareTo(upper) < 0; }
+        public V next() { return tr.next().value(null); }
+    }
+
+    private class BoundValuesCollection extends AbstractCollection<V> {
+        private final BoundMap map;
+        
+        BoundValuesCollection(final BoundMap map) {
+            this.map = map;
+        }
+
+        public int size() { return iteratorCount(iterator()); }
+        public Iterator<V> iterator() { return new BoundValuesIterator(map); }
+    }
+
     private class BoundEntriesIterator implements Iterator<Map.Entry<K,V>> {
-        private final Traversal<K,V> lower;
-        private final Traversal<K,V> upper;
-        private final Traversal.Traverser<K,V> traverser;
+        private final NodeTraversal<K,V> upper;
+        private final NodeTraversal<K,V> tr;
 
         BoundEntriesIterator(final BoundMap map) {
-            lower = map.lower.mutable();
-            upper = map.upper;
-            traverser = lower.traverser();
+            upper = map.upper.immutable();
+            tr = map.lower.mutable();
         }
 
-        public boolean hasNext() {
-            return traverser.hasNext() && lower.compareTo(upper) < 0;
-        }
-
-        public Map.Entry<K,V> next() {
-            traverser.next();
-            return traverser.getLeaf().entry(traverser.getIndex());
-        }
+        public boolean hasNext() { return tr.hasNext() && tr.compareTo(upper) < 0; }
+        public Map.Entry<K,V> next() { return tr.next().entry(null); }
     }
 
     private class BoundEntriesSet extends AbstractSet<Map.Entry<K,V>> {
@@ -829,73 +745,69 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
     }
 
-    private BoundMap boundMap(final Traversal<K,V> lower, final Traversal<K,V> upper) {
+    private BoundMap boundMap(final NodeTraversal<K,V> lower, final NodeTraversal<K,V> upper) {
         return boundMap(lower, true, upper, false);
     }
     
-    private BoundMap boundMap(final Traversal<K,V> lower, final boolean lowerInclusive,
-                              final Traversal<K,V> upper, final boolean upperInclusive) {
-        return new BoundMap(fixLowerBounds(lower, lowerInclusive).immutable(),
-                            fixUpperBounds(upper, upperInclusive).immutable());
+    private BoundMap boundMap(final NodeTraversal<K,V> lower, final boolean lowerInclusive,
+                              final NodeTraversal<K,V> upper, final boolean upperInclusive) {
+        return new BoundMap(fixLowerBounds(lower, lowerInclusive),
+                            fixUpperBounds(upper, upperInclusive));
     }
 
-    private Traversal<K,V> fixLowerBounds(final Traversal<K,V> lower, final boolean inclusive) {
-        final Traversal<K,V>.Entry entry = lower.current();
+    private NodeTraversal<K,V> fixLowerBounds(final NodeTraversal<K,V> lower, final boolean inclusive) {
+        if(!lower.isMatch()) {
+            lower.positionInsert();
+            if(inclusive) {
+                lower.current().previous();
+            }
 
-        if(entry.getIndex() < 0) {
-            entry.setIndex(insertIndex(entry.getIndex()) - 1);
+            return lower;
         }
         else if(inclusive) {
-            //found an exact match. if exclusive, keep the index where it is
-            //as doing this excludes the lower bound. otherwise, back up one
-            //to include the exact match.
-            entry.setIndex(entry.getIndex() - 1);
+            return lower.previous();
         }
-
-        return lower;
+        else {
+            return lower;
+        }
     }
 
-    private Traversal<K,V> fixUpperBounds(final Traversal<K,V> upper, final boolean inclusive) {
-        final Traversal<K,V>.Entry entry = upper.current();
-        final boolean goPrevious = entry.getIndex() < 0 || (!inclusive && entry.getIndex() >= 0);
-        if(entry.getIndex() < 0) {
-            entry.setIndex(insertIndex(entry.getIndex()));
+    private NodeTraversal<K,V> fixUpperBounds(final NodeTraversal<K,V> upper, final boolean inclusive) {
+        if(upper.isMatch()) {
+            return inclusive ? upper : upper.previous();
         }
 
-        if(goPrevious) {
-            upper.traverser().previous();
-        }
-        
-        return upper;
+        upper.positionInsert();
+        return upper.previous();
     }
 
     private class BoundMap implements Map<K,V>, SortedMap<K,V> {
-        private final Traversal<K,V> lower;
-        private final Traversal<K,V> upper;
+        private final NodeTraversal<K,V> lower;
+        private final NodeTraversal<K,V> upper;
 
-        BoundMap(final Traversal<K,V> lower, final Traversal<K,V> upper) {
-            this.lower = lower;
-            this.upper = upper;
+        BoundMap(final NodeTraversal<K,V> lower, final NodeTraversal<K,V> upper) {
+            this.lower = lower.immutable();
+            this.upper = upper.immutable();
         }
 
-        public BoundMap changeLower(final Traversal<K,V> newLower, final boolean inclusive) {
+        public BoundMap changeLower(final NodeTraversal<K,V> newLower, final boolean inclusive) {
             return new BoundMap(fixLowerBounds(newLower, inclusive), upper);
         }
 
-        public BoundMap changeLower(final Traversal<K,V> newLower) {
+        public BoundMap changeLower(final NodeTraversal<K,V> newLower) {
             return changeLower(newLower, true);
         }
 
-        public BoundMap changeUpper(final Traversal<K,V> newUpper, final boolean inclusive) {
+        public BoundMap changeUpper(final NodeTraversal<K,V> newUpper, final boolean inclusive) {
             return new BoundMap(lower, fixUpperBounds(newUpper, inclusive));
         }
 
-        public BoundMap changeUpper(final Traversal<K,V> newUpper) {
+        public BoundMap changeUpper(final NodeTraversal<K,V> newUpper) {
             return changeUpper(newUpper, false);
         }
 
-        private <R> R checkBounds(final K k, final Function<Traversal<K,V>, R> func) {
-            final Traversal<K,V> tr = Traversal.<K,V>newMutable().execute(store.getRoot(), k);
+        private <R> R checkBounds(final K k, final Function<NodeTraversal<K,V>, R> func) {
+            final NodeTraversal<K,V> tr = store.getRoot().traverse(k);
             if(lower.compareTo(tr) < 0 && tr.compareTo(upper) <= 0) {
                 return func.apply(tr);
             }
@@ -904,8 +816,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             }
         }
 
-        private <R> R checkBounds(final K k, final R ret, final Function<Traversal<K,V>, R> func) {
-            final Traversal<K,V> tr = Traversal.<K,V>newMutable().execute(store.getRoot(), k);
+        private <R> R checkBounds(final K k, final R ret, final Function<NodeTraversal<K,V>, R> func) {
+            final NodeTraversal<K,V> tr = store.getRoot().traverse(k);
             if(lower.compareTo(tr) < 0 && tr.compareTo(upper) <= 0) {
                 return func.apply(tr);
             }
@@ -923,8 +835,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         }
 
         public boolean containsKey(final Object o) {
-            return checkBounds(store.getKeyType().cast(o), false,
-                               (tr) -> tr.current().getIndex() >= 0 ? true : false);
+            return checkBounds(store.getKeyType().cast(o), false, (tr) -> tr.isMatch());
         }
 
         public boolean containsValue(final Object o) {
@@ -952,11 +863,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return entrySet().equals(rhs.entrySet());
         }
 
-        private Optional<V> _value(final Traversal<K,V> tr){
-            final int index = tr.current().getIndex();
-            return (index >= 0 ?
-                    Optional.of(tr.current().getNode().asLeaf().value(index)) :
-                    Optional.empty());
+        private Optional<V> _value(final NodeTraversal<K,V> tr) {
+            return tr.isMatch() ? Optional.of(tr.value(null)) : Optional.empty();
         }
         
         public Optional<V> value(final K k) {
@@ -977,21 +885,20 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return isEmpty() ? ifEmpty.get() : notEmpty.get();
         }
 
-        private Traversal.Traverser<K,V> _first() {
-            final Traversal.Traverser<K,V> traverser = lower.mutable().traverser();
-            return traverser.next();
+        private NodeTraversal<K,V> _first() {
+            return lower.mutable().next();
         }
-
+        
         public K firstKey() {
             if(isEmpty()) {
                 throw new NoSuchElementException("tree is empty");
             }
-
-            return _first().key(() -> null);
+            
+            return _first().key(null);
         }
         
         public Map.Entry<K,V> firstEntry() {
-            return isEmpty() ? null : _first().entry(() -> null);
+            return isEmpty() ? null : _first().entry(null);
         }
 
         public boolean isEmpty() {
@@ -1006,14 +913,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return new BoundKeysSet(this);
         }
 
-        private K _lastKey() {
-            final Traversal.Traverser<K,V> traverser = upper.mutable().traverser();
-            return traverser.getLeaf().key(traverser.getIndex());
-        }
-
         private Map.Entry<K,V> _lastEntry() {
-            final Traversal.Traverser<K,V> traverser = upper.mutable().traverser();
-            return traverser.getLeaf().entry(traverser.getIndex());
+            return upper.entry(null);
         }
         
         public K lastKey() {
@@ -1021,11 +922,11 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
                 throw new NoSuchElementException("tree is empty");
             }
             
-            return upper.mutable().traverser().key(() -> null);
+            return upper.key(null);
         }
 
         public Map.Entry<K,V> lastEntry() {
-            return isEmpty() ? null : upper.mutable().traverser().entry(() -> null);
+            return isEmpty() ? null : upper.entry(null);
         }
 
         public V put(final K k, final V v) {
@@ -1040,13 +941,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
         public V remove(final Object o) {
             final K k = store.getKeyType().cast(o);
-            final Traversal<K,V> tr = tlTraversal.get().execute(store.getRoot(), k);
-            if(lower.compareTo(tr) < 0 && tr.compareTo(upper) <= 0) {
-                return BplusTree.this.remove(o);
-            }
-            else {
-                return null;
-            }
+            return checkBounds(k, null, (tr) -> BplusTree.this.remove(o));
         }
 
         public int size() {

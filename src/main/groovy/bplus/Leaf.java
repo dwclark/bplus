@@ -131,6 +131,6 @@ public interface Leaf<K extends Comparable<K>,V> extends Node<K,V> {
     }
     
     default void rightTraverse(NodeTraversal<K,V> traversal) {
-        traversal.add(this, size());
+        traversal.add(this, insertIndex(size()));
     }
 }
