@@ -100,17 +100,19 @@ public interface Branch<K extends Comparable<K>,V> extends Node<K,V> {
         }
     }
 
-    default void traverse(NodeTraversal<K,V> traversal, K k) {
+    default void traverse(Traversal<K,V> traversal, K k) {
         final int navIndex = navigateIndex(k);
         traversal.add(this, navIndex);
         child(navIndex).traverse(traversal, k);
     }
     
-    default void leftTraverse(NodeTraversal<K,V> traversal) {
+    default void leftTraverse(Traversal<K,V> traversal) {
         traversal.add(this, 0);
+        child(0).leftTraverse(traversal);
     }
     
-    default void rightTraverse(NodeTraversal<K,V> traversal) {
+    default void rightTraverse(Traversal<K,V> traversal) {
         traversal.add(this, size() - 1);
+        child(size() - 1).rightTraverse(traversal);
     }
 }

@@ -6,6 +6,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 class BplusTreeSpec extends Specification {
 
+    private basicMap() {
+        def oa = new ObjectArray(Integer,Integer, 8)
+        def btree = new BplusTree(oa);
+        (1..1024).each { btree.put(it, it) }
+        return btree;
+    }
+
     public static makeLeaf(final ObjectArray oa, final List<Integer> list) {
         def leaf = oa.root.newLeaf();
         list.each { leaf.insert(it, it) }
@@ -595,7 +602,7 @@ class BplusTreeSpec extends Specification {
         setup:
         def oa = new ObjectArray(Integer, Integer, 16)
         def btree = new BplusTree(oa)
-
+        
         when:
         (1..2048).each { btree.put(it, it) }
 
@@ -609,4 +616,26 @@ class BplusTreeSpec extends Specification {
         btree.size() == 0
     }
 
+    def 'test poll'() {
+        setup:
+        def btree = basicMap()
+
+        when:
+        def e = btree.pollFirstEntry()
+
+        then:
+        e.key == 1
+        e.value == 1
+        btree.size() == 1023
+        btree.firstKey() == 2
+
+        when:
+        e = btree.pollLastEntry()
+
+        then:
+        e.key == 1024
+        e.value == 1024
+        btree.size() == 1022
+        btree.lastKey() == 1023
+    }
 }

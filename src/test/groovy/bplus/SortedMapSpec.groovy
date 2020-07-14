@@ -124,7 +124,6 @@ class SortedMapSpec extends Specification {
         map.floorEntry(0) == null
     }
 
-    @Ignore
     def 'test higher'() {
         setup:
         def map = basicMap();
@@ -134,6 +133,8 @@ class SortedMapSpec extends Specification {
         map.higherEntry(99) == new MapEntry(100,100)
         map.higherKey(1024) == null
         map.higherEntry(1024) == null
+        map.higherKey(5000) == null
+        map.higherEntry(5000) == null
         map.higherKey(0) == 1
         map.higherEntry(0) == new MapEntry(1,1)
     }

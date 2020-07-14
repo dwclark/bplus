@@ -16,9 +16,9 @@ public interface Node<K extends Comparable<K>,V> {
     Node<K,V> copy(int srcPos, Node<K,V> src, int pos, int length);
     Branch<K,V> newBranch();
     Leaf<K,V> newLeaf();
-    void traverse(NodeTraversal<K,V> traversal, K k);
-    void leftTraverse(NodeTraversal<K,V> traversal);
-    void rightTraverse(NodeTraversal<K,V> traversal);
+    void traverse(Traversal<K,V> traversal, K k);
+    void leftTraverse(Traversal<K,V> traversal);
+    void rightTraverse(Traversal<K,V> traversal);
     
     default int lastIndex() {
         return size() - 1;
@@ -101,26 +101,26 @@ public interface Node<K extends Comparable<K>,V> {
         return copy(at, at + by, size() - (at + by));
     }
 
-    default NodeTraversal<K,V> traverse(K k) {
-        final NodeTraversal<K,V> tr = NodeTraversal.makeMutable();
+    default Traversal<K,V> traverse(K k) {
+        final Traversal<K,V> tr = Traversal.makeMutable();
         traverse(tr, k);
         return tr;
     }
     
-    default NodeTraversal<K,V> leftTraverse() {
-        final NodeTraversal<K,V> tr = NodeTraversal.makeMutable();
+    default Traversal<K,V> leftTraverse() {
+        final Traversal<K,V> tr = Traversal.makeMutable();
         leftTraverse(tr);
         return tr;
     }
     
-    default NodeTraversal<K,V> rightTraverse() {
-        final NodeTraversal<K,V> tr = NodeTraversal.makeMutable();
+    default Traversal<K,V> rightTraverse() {
+        final Traversal<K,V> tr = Traversal.makeMutable();
         rightTraverse(tr);
         return tr;
     }
 
-    default NodeTraversal<K,V> leafOnly(K k) {
-        final NodeTraversal<K,V> tr = NodeTraversal.makeLeafOnly();
+    default Traversal<K,V> leafOnly(K k) {
+        final Traversal<K,V> tr = Traversal.makeLeafOnly();
         traverse(tr, k);
         return tr;
     }
