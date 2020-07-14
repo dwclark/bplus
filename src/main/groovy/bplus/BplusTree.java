@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap<K,V> {
+public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap<K,V>, NavigableMap<K,V> {
 
     private class Working {
         private final List<Node<K,V>> done = new ArrayList<>(4);
@@ -466,6 +466,14 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return _ceiling(k).entry(null);
     }
 
+    public NavigableSet<K> descendingKeySet() {
+        throw new UnsupportedOperationException();
+    }
+
+    public NavigableMap<K,V> descendingMap() {
+        throw new UnsupportedOperationException();
+    }
+
     public K firstKey() {
         if(isEmpty()) {
             throw new NoSuchElementException("tree is empty");
@@ -519,13 +527,34 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return boundMap(store.getRoot().leftTraverse(), store.getRoot().traverse(toKey)); 
     }
 
+    public NavigableMap<K,V> headMap(final K toKey, final boolean inclusive) {
+        throw new UnsupportedOperationException();
+    }
+
+    public K lowerKey(final K key) {
+        throw new UnsupportedOperationException();
+    }
+
+    public Map.Entry<K,V> lowerEntry(final K key) {
+        throw new UnsupportedOperationException();
+    }
+
     public SortedMap<K,V> tailMap(final K fromKey) {
         return boundMap(store.getRoot().traverse(fromKey), store.getRoot().rightTraverse());
+    }
+
+    public NavigableMap<K,V> tailMap(final K fromKey, final boolean inclusive) {
+        throw new UnsupportedOperationException();
     }
 
     public SortedMap<K,V> subMap(final K fromKey, final K toKey) {
         checkRange(fromKey, toKey);
         return boundMap(store.getRoot().traverse(fromKey), store.getRoot().traverse(toKey));
+    }
+
+    public NavigableMap<K,V> subMap(final K fromKey, final boolean fromInclusive,
+                                    final K toKey, final boolean toInclusive) {
+        throw new UnsupportedOperationException();
     }
     
     private Traversal<K,V> _last() {
@@ -542,6 +571,30 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
     public Map.Entry<K,V> lastEntry() {
         return isEmpty() ? null : _last().entry(null);
+    }
+
+    public NavigableSet<K> navigableKeySet() {
+        throw new UnsupportedOperationException();
+    }
+
+    public Map.Entry<K,V> pollFirstEntry() {
+        if(isEmpty()) {
+            return null;
+        }
+
+        final Map.Entry<K,V> e = store.getRoot().leftTraverse().next().entry(null);
+        delete(e.getKey());
+        return e;
+    }
+
+    public Map.Entry<K,V> pollLastEntry() {
+        if(isEmpty()) {
+            return null;
+        }
+
+        final Map.Entry<K,V> e = store.getRoot().rightTraverse().positionInsert().previous().entry(null);
+        delete(e.getKey());
+        return e;
     }
 
     @Override
