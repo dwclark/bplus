@@ -638,4 +638,25 @@ class BplusTreeSpec extends Specification {
         btree.size() == 1022
         btree.lastKey() == 1023
     }
+
+    def 'test lower and floor'() {
+        setup:
+        def btree = basicMap()
+
+        expect:
+        btree.lowerKey(-10) == null
+        btree.lowerEntry(-10) == null
+        btree.floorKey(-10) == null
+        btree.floorEntry(-10) == null
+        btree.lowerKey(1) == null
+        btree.floorKey(1) == 1
+        btree.lowerKey(2) == 1
+        btree.floorKey(2) == 2
+        btree.lowerKey(1024) == 1023
+        btree.floorKey(1024) == 1024
+        btree.lowerKey(1025) == 1024
+        btree.lowerEntry(1025).value == 1024
+        btree.floorKey(1025) == 1024
+        btree.floorEntry(1025).value == 1024
+    }
 }

@@ -531,12 +531,22 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         throw new UnsupportedOperationException();
     }
 
-    public K lowerKey(final K key) {
-        throw new UnsupportedOperationException();
+    private Traversal<K,V> _lower(final K k) {
+        final Traversal<K,V> traversal = store.getRoot().traverse(k);
+        if(traversal.isMatch()) {
+            return traversal.hasPrevious() ? traversal.previous() : traversal.empty();
+        }
+
+        traversal.positionInsert();
+        return traversal.hasPrevious() ? traversal.previous() : traversal.empty();
+    }
+    
+    public K lowerKey(final K k) {
+        return isEmpty() ? null : _lower(k).key(null);
     }
 
-    public Map.Entry<K,V> lowerEntry(final K key) {
-        throw new UnsupportedOperationException();
+    public Map.Entry<K,V> lowerEntry(final K k) {
+        return isEmpty() ? null : _lower(k).entry(null);
     }
 
     public SortedMap<K,V> tailMap(final K fromKey) {
