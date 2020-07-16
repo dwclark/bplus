@@ -21,8 +21,10 @@ class SortedMapSpec extends Specification {
         btree.tailMap(100).keySet() as List == (100..1024)
         btree.tailMap(100).values() as List == (100..1024)
         btree.tailMap(100).firstKey() == 100
+        btree.tailMap(100, false).firstKey() == 101
         btree.tailMap(100).firstEntry() == new MapEntry(100, 100)
         btree.tailMap(100).lastKey() == 1024
+        btree.tailMap(100, false).lastKey() == 1024
         btree.tailMap(100).lastEntry() == new MapEntry(1024, 1024)
     }
 
@@ -35,6 +37,7 @@ class SortedMapSpec extends Specification {
         btree.headMap(100).values() as List == (1..99)
         btree.headMap(100).firstKey() == 1
         btree.headMap(100).lastKey() == 99
+        btree.headMap(100, true).lastKey() == 100
     }
 
     def 'test sub map'() {
@@ -45,7 +48,9 @@ class SortedMapSpec extends Specification {
         btree.subMap(50, 100).keySet() as List == (50..99)
         btree.subMap(50, 100).values() as List == (50..99)
         btree.subMap(50, 100).firstKey() == 50
+        btree.subMap(50, false, 100, true).firstKey() == 51
         btree.subMap(50, 100).lastKey() == 99
+        btree.subMap(50, false, 100, true).lastKey() == 100
     }
 
     def 'test sorted map methods'() {

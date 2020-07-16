@@ -483,7 +483,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
 
     public Map.Entry<K,V> firstEntry() {
-        return isEmpty() ? null : store.getRoot().leftTraverse().next().entry(null);
+        return isEmpty() ? null : store.getRoot().leftTraverse().forward().entry(null);
     }
 
     private Traversal<K,V> _floor(final K k) {
@@ -508,7 +508,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         final Traversal<K,V> traversal = store.getRoot().traverse(k);
 
         if(traversal.isMatch()) {
-            return traversal.hasNext() ? traversal.next() : traversal.empty();
+            return traversal.hasForward() ? traversal.forward() : traversal.empty();
         }
 
         traversal.positionInsert();
@@ -528,7 +528,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
 
     public NavigableMap<K,V> headMap(final K toKey, final boolean inclusive) {
-        throw new UnsupportedOperationException();
+        return boundMap(store.getRoot().leftTraverse(), true,
+                        store.getRoot().traverse(toKey), inclusive);
     }
 
     private Traversal<K,V> _lower(final K k) {
@@ -554,7 +555,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
     }
 
     public NavigableMap<K,V> tailMap(final K fromKey, final boolean inclusive) {
-        throw new UnsupportedOperationException();
+        return boundMap(store.getRoot().traverse(fromKey), inclusive,
+                        store.getRoot().rightTraverse(), true);
     }
 
     public SortedMap<K,V> subMap(final K fromKey, final K toKey) {
@@ -564,7 +566,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
     public NavigableMap<K,V> subMap(final K fromKey, final boolean fromInclusive,
                                     final K toKey, final boolean toInclusive) {
-        throw new UnsupportedOperationException();
+        return boundMap(store.getRoot().traverse(fromKey), fromInclusive,
+                        store.getRoot().traverse(toKey), toInclusive);
     }
     
     private Traversal<K,V> _last() {
@@ -592,7 +595,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return null;
         }
 
-        final Map.Entry<K,V> e = store.getRoot().leftTraverse().next().entry(null);
+        final Map.Entry<K,V> e = store.getRoot().leftTraverse().forward().entry(null);
         delete(e.getKey());
         return e;
     }
@@ -646,8 +649,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             this.traversal = store.getRoot().leftTraverse();
         }
 
-        public boolean hasNext() { return traversal.hasNext(); }
-        public K next() { return traversal.next().key(null); }
+        public boolean hasNext() { return traversal.hasForward(); }
+        public K next() { return traversal.forward().key(null); }
     }
 
     private class KeysSet extends AbstractSet<K> {
@@ -668,8 +671,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             this.traversal = store.getRoot().leftTraverse();
         }
 
-        public boolean hasNext() { return traversal.hasNext(); }
-        public V next() { return traversal.next().value(null); }
+        public boolean hasNext() { return traversal.hasForward(); }
+        public V next() { return traversal.forward().value(null); }
     }
 
     private class ValuesCollection extends AbstractCollection<V> {
@@ -684,8 +687,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             this.traversal = store.getRoot().leftTraverse();
         }
 
-        public boolean hasNext() { return traversal.hasNext(); }
-        public Map.Entry<K,V> next() { return traversal.next().entry(null); }
+        public boolean hasNext() { return traversal.hasForward(); }
+        public Map.Entry<K,V> next() { return traversal.forward().entry(null); }
     }
 
     private class EntriesSet extends AbstractSet<Map.Entry<K,V>> {
@@ -718,8 +721,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             this.tr = map.lower.mutable();
         }
 
-        public boolean hasNext() { return tr.hasNext() && tr.compareTo(upper) < 0; }
-        public K next() { return tr.next().key(null); }
+        public boolean hasNext() { return tr.hasForward() && tr.compareTo(upper) < 0; }
+        public K next() { return tr.forward().key(null); }
     }
 
     private class BoundKeysSet extends AbstractSet<K> {
@@ -752,8 +755,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             tr = map.lower.mutable();
         }
         
-        public boolean hasNext() { return tr.hasNext() && tr.compareTo(upper) < 0; }
-        public V next() { return tr.next().value(null); }
+        public boolean hasNext() { return tr.hasForward() && tr.compareTo(upper) < 0; }
+        public V next() { return tr.forward().value(null); }
     }
 
     private class BoundValuesCollection extends AbstractCollection<V> {
@@ -776,8 +779,8 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             tr = map.lower.mutable();
         }
 
-        public boolean hasNext() { return tr.hasNext() && tr.compareTo(upper) < 0; }
-        public Map.Entry<K,V> next() { return tr.next().entry(null); }
+        public boolean hasNext() { return tr.hasForward() && tr.compareTo(upper) < 0; }
+        public Map.Entry<K,V> next() { return tr.forward().entry(null); }
     }
 
     private class BoundEntriesSet extends AbstractSet<Map.Entry<K,V>> {
@@ -843,7 +846,7 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
         return upper.previous();
     }
 
-    private class BoundMap implements Map<K,V>, SortedMap<K,V> {
+    private class BoundMap implements Map<K,V>, SortedMap<K,V>, NavigableMap<K,V> {
         private final Traversal<K,V> lower;
         private final Traversal<K,V> upper;
 
@@ -947,8 +950,24 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return isEmpty() ? ifEmpty.get() : notEmpty.get();
         }
 
+        public K ceilingKey(final K k) {
+            throw new UnsupportedOperationException();
+        }
+        
+        public Map.Entry<K,V> ceilingEntry(final K k) {
+            throw new UnsupportedOperationException();
+        }
+        
+        public NavigableSet<K> descendingKeySet() {
+            throw new UnsupportedOperationException();
+        }
+        
+        public NavigableMap<K,V> descendingMap() {
+            throw new UnsupportedOperationException();
+        }
+        
         private Traversal<K,V> _first() {
-            return lower.mutable().next();
+            return lower.mutable().forward();
         }
         
         public K firstKey() {
@@ -963,12 +982,32 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return isEmpty() ? null : _first().entry(null);
         }
 
+        public K floorKey(final K k) {
+            throw new UnsupportedOperationException();
+        }
+        
+        public Map.Entry<K,V> floorEntry(final K k) {
+            throw new UnsupportedOperationException();
+        }
+
+        public K higherKey(final K k) {
+            throw new UnsupportedOperationException();
+        }
+        
+        public Map.Entry<K,V> higherEntry(final K k) {
+            throw new UnsupportedOperationException();
+        }
+
         public boolean isEmpty() {
             return lower.compareTo(upper) >= 0;
         }
 
         public BoundMap headMap(final K k) {
             return checkBounds(k, this::changeUpper);
+        }
+
+        public NavigableMap<K,V> headMap(final K toKey, final boolean inclusive) {
+            throw new UnsupportedOperationException();
         }
 
         public Set<K> keySet() {
@@ -989,6 +1028,26 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
 
         public Map.Entry<K,V> lastEntry() {
             return isEmpty() ? null : upper.entry(null);
+        }
+
+        public K lowerKey(final K k) {
+            throw new UnsupportedOperationException();
+        }
+        
+        public Map.Entry<K,V> lowerEntry(final K k) {
+            throw new UnsupportedOperationException();
+        }
+        
+        public NavigableSet<K> navigableKeySet() {
+            throw new UnsupportedOperationException();
+        }
+
+        public Map.Entry<K,V> pollFirstEntry() {
+            throw new UnsupportedOperationException();
+        }
+        
+        public Map.Entry<K,V> pollLastEntry() {
+            throw new UnsupportedOperationException();
         }
 
         public V put(final K k, final V v) {
@@ -1015,8 +1074,17 @@ public class BplusTree<K extends Comparable<K>,V> implements Map<K,V>, SortedMap
             return checkBounds(fromKey, (tr1) -> { return checkBounds(toKey, (tr2) -> { return new BoundMap(tr1, tr2); }); });
         }
 
+        public NavigableMap<K,V> subMap(final K fromKey, final boolean fromInclusive,
+                                        final K toKey, final boolean toInclusive) {
+            throw new UnsupportedOperationException();
+        }
+
         public BoundMap tailMap(final K k) {
             return checkBounds(k, this::changeLower);
+        }
+
+        public NavigableMap<K,V> tailMap(final K fromKey, final boolean inclusive) {
+            throw new UnsupportedOperationException();
         }
         
         public Collection<V> values() {

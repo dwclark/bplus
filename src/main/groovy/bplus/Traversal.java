@@ -20,7 +20,7 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         return new LeafOnly<>();
     }
     
-    public abstract Traversal<K,V> next();
+    public abstract Traversal<K,V> forward();
     public abstract Traversal<K,V> previous();
     public abstract Step<K,V> get(int level);
     public abstract int size();
@@ -64,9 +64,9 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         return this;
     }
     
-    public boolean hasNext() {
+    public boolean hasForward() {
         for(int i = 0; i < size(); ++i) {
-            if(get(i).hasNext()) {
+            if(get(i).hasForward()) {
                 return true;
             }
         }
@@ -138,11 +138,11 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         public abstract Step<K,V> index(int index);
         public abstract int index();
 
-        public boolean hasNext() {
+        public boolean hasForward() {
             return index() + 1 < node().size();
         }
 
-        public void next() {
+        public void forward() {
             index(index() + 1);
         }
 
@@ -210,7 +210,7 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
     static class EmptyTraversal<K extends Comparable<K>,V> extends Traversal<K,V> {
         public boolean isEmpty() { return true; }
         
-        public Traversal<K,V> next() {
+        public Traversal<K,V> forward() {
             throw new UnsupportedOperationException();
         }
 
@@ -240,8 +240,8 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         
         public boolean isEmpty() { return leafStep == null; }
         
-        public Traversal<K,V> next() {
-            leafStep.next();
+        public Traversal<K,V> forward() {
+            leafStep.forward();
             return this;
         }
 
@@ -285,7 +285,7 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         
         public boolean isEmpty() { return steps.isEmpty(); }
         
-        public Traversal<K,V> next() {
+        public Traversal<K,V> forward() {
             throw new UnsupportedOperationException();
         }
 
@@ -323,12 +323,12 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
         
         public boolean isEmpty() { return steps.isEmpty(); }
         
-        public Traversal<K,V> next() {
-            if(!current().hasNext()) {
+        public Traversal<K,V> forward() {
+            if(!current().hasForward()) {
                 nextNode();
             }
 
-            current().next();
+            current().forward();
             return this;
         }
 
@@ -336,8 +336,8 @@ abstract class Traversal<K extends Comparable<K>,V> implements Comparable<Traver
             for(int i = size() - 2; i >= 0; --i) {
                 pop();
                 final Step<K,V> toTest = get(i);
-                if(toTest.hasNext()) {
-                    toTest.next();
+                if(toTest.hasForward()) {
+                    toTest.forward();
                     break;
                 }
             }
